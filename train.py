@@ -1,5 +1,7 @@
 import tensorflow as tf
 import numpy as np
+import os
+slim = tf.contrib.slim
 
 def estimator(ref_features, ref_labels, target_features, target_labels=None):
     bhw = tf.shape(target_features)[:-1]
@@ -35,28 +37,67 @@ from clustering import num_clusters
 
 NUM_REF = 3
 NUM_TARGET = 1
+model_dir = os.path.join(os.path.dirname(__file__), 'data', 'model')
+if not os.path.exists(model_dir):
+    os.mkdir(model_dir)
+#YOLOv3 upsample upper layer and concat with lower layer
+#LAYER = 'resnet_v1_101/block2/unit_3/bottleneck_v1/conv3'
+LAYER = 'resnet_v1_101/block2/unit_3/bottleneck_v1'
+DIM = 256
+    
 data = create_ref_target_generator(NUM_REF, NUM_TARGET).repeat().map(lambda x,y: tf.concat([x,y], 0))
 image_gen = data.map(lambda x: tf.image.resize_images(x[:,:,:,0:1], [256,256])).make_one_shot_iterator()
 label_gen = data.map(lambda x: tf.image.resize_images(x, [32,32])).map(lab_to_labels).make_one_shot_iterator()
 
-#YOLOv3 upsample upper layer and concat with lower layer
-LAYER = 'resnet_v1_101/block2/unit_3/bottleneck_v1/conv3'
-DIM = 512
-
 images = image_gen.get_next()
 labels = label_gen.get_next()
-#images = tf.placeholder(tf.float32, shape=[None,None,None,1])
-#labels = tf.placeholder(tf.int32, shape=[None,None,None])
-#one_hot = tf.one_hot(labels, num_clusters)
-with tf.contrib.slim.arg_scope(resnet_v1.resnet_arg_scope()):
+with slim.arg_scope(resnet_v1.resnet_arg_scope()):
     _, end_points = resnet_v1.resnet_v1_101(images, 1000, is_training=True)
-feature_map = end_points[LAYER][:,:,:,:256]
+with slim.arg_scope([slim.conv2d], stride=1, padding='SAME',
+                    activation_fn=tf.nn.relu, normalizer_fn=slim.batch_norm)
+  with slim.arg_scope([slim.batch_norm], is_training=True):
+      net = end_points[LAYER]
+      feature_map = slim.conv2d(net, DIM, [1,1],
+                                activation_fn=None,
+                                normalizer_fn=None)
 
 end_points = estimator(feature_map[:NUM_REF], tf.one_hot(labels[:NUM_REF], num_clusters),
                        feature_map[NUM_REF:], labels[NUM_REF:])
+prediction = end_points['predictions']
+prediction_lab = labels_to_lab(prediction)
 loss = tf.reduce_sum(end_points['losses'])
+loss_summary = tf.summary.scalar('loss', loss)
+image_summary = tf.summary.merge([tf.summary.image('visualized_prediction', ph_vis_pred),
+                                  tf.summary.image('visualized_feature', ph_vis_feat)])
 train_op = tf.train.AdamOptimizer().minimize(loss)
 
 sess = tf.Session()
+saver = tf.train.Saver()
+writer = tf.summary.FileWriter(model_dir)
 sess.run(tf.global_variables_initializer())
-sess.run(train_op)
+
+import cv2
+from sklearn.decomposition import PCA
+pca = PCA(n_components=3)
+
+for i in xrange(100000):
+    feat, pred, _, summary = sess.run([feature_map,
+                                       prediction_lab,
+                                       train_op,
+                                       loss_summary])
+    writer.add_summary(summary, i)
+    
+    if i % 100 == 0:
+        vis_pred = cv2.cvtColor(pred[NUM_REF], cv2.COLOR_LAB2RGB)
+        feat_flat = feat[NUM_REF].reshape(-1, feat.shape[-1])
+        pca.fit(feat_flat)
+        feat_flat = pca.transform(feat_flat)
+        feat_flat /= np.abs(feat_flat).max()
+        feat_flat = (feat_flat + 1) / 2
+        vis_feat = feat_flat.reshape(feat.shape[:2]+[3])
+        summary = sess.run(image_summary, {ph_vis_pred: vis_pred,
+                                           ph_vis_feat: vis_feat})
+        writer.add_summary(summary, i)
+        
+    if i % 1000 == 0:
+        saver.save(sess, model_dir, global_step=i)
