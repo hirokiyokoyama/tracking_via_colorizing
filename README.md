@@ -1,0 +1,12 @@
+# Tensorflow implementation of "Self-Supervised Tracking via Video Colorization"
+
+For details, see https://ai.googleblog.com/2018/06/self-supervised-tracking-via-video.html.
+
+## Requirements
+* *Latest version* of youtube-dl
+* ffmpeg
+
+## Usage
+1. python dataset.py (this downloads kinetics dataset and associated videos from youtube, which takes log time)
+1. python clustering.py (clusters colors that appear in the videos using kmeans)
+1. python train.py

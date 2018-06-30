@@ -4,13 +4,18 @@ import numpy as np
 import cv2
 import tensorflow as tf
 
-kinetic_path = os.path.join(os.path.dirname(__file__), 'data', 'kinetics_train', 'kinetics_train.json')
-video_dir = os.path.join(os.path.dirname(__file__), 'data', 'videos')
-kinetic = json.load(open(kinetic_path))
+data_dir = os.path.join(os.path.dirname(__file__), 'data')
+kinetics_dir = os.path.join(data_dir, 'kinetics_train')
+kinetics_path = os.path.join(kinetics_dir, 'kinetics_train.json')
+video_dir = os.path.join(data_dir, 'videos')
+if __name__ != '__main__':
+    if not os.path.exists(kinetics_path):
+        raise ImportError('%s does not exist. Run dataset.py first.' % kinetics_path)
+    kinetics = json.load(open(kinetics_path))
 
-def create_ref_target_generator(num_ref=3, num_target=5):
+def create_ref_target_generator(num_ref=3, num_target=1):
     def generate_frames():
-        for key, entry in kinetic.iteritems():
+        for key, entry in kinetics.iteritems():
             filename = os.path.join(video_dir, key+'.mp4')
             print 'Opening %s' % filename
             cap = cv2.VideoCapture(filename)
@@ -43,11 +48,24 @@ def create_batch_generator(batch_size):
     return create_ref_target_generator(num_ref=batch_size, num_target=0)
 
 if __name__=='__main__':
+    if not os.path.exists(data_dir):
+        os.mkdir(data_dir)
     if not os.path.exists(video_dir):
         os.mkdir(video_dir)
 
-    for key in kinetic.keys():
-        entry = kinetic[key]
+    if not os.path.exists(kinetics_path):
+        if not os.path.exists(kinetics_dir):
+            os.mkdir(kinetics_dir)
+        print 'Downloading kinetics dataset.'
+        kinetics_url = 'https://deepmind.com/documents/193/kinetics_600_train%20(1).zip'
+        kinetics_zip = os.path.join(data_dir, 'kinetics_train.zip')
+        os.system('curl "%s" > %s' % (kinetics_url, kinetics_zip))
+        os.system('unzip %s -d %s' % (kinetics_zip, kinetics_dir))
+        os.remove(kinetics_zip)
+    kinetics = json.load(open(kinetics_path))
+
+    for key in kinetics.keys():
+        entry = kinetics[key]
         url = entry['url']
         path1 = os.path.join(video_dir, '_'+key+'.mp4')
         path2 = os.path.join(video_dir, key+'.mp4')
