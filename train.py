@@ -83,7 +83,7 @@ image_summary = tf.summary.merge([tf.summary.image('target_image', ph_target_img
 
 sess = tf.Session()
 saver = tf.train.Saver()
-writer = tf.summary.FileWriter(os.path.join(model_dir, 'model.ckpt'))
+writer = tf.summary.FileWriter(model_dir)
 sess.run(tf.global_variables_initializer())
 
 import cv2
@@ -120,4 +120,4 @@ for i in xrange(100000):
         
     if i % 1000 == 0:
         # save the model
-        saver.save(sess, model_dir, global_step=i)
+        saver.save(sess, os.path.join(model_dir, 'model.ckpt'), global_step=i)
