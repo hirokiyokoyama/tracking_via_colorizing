@@ -7,6 +7,6 @@ For details, see https://ai.googleblog.com/2018/06/self-supervised-tracking-via-
 * ffmpeg
 
 ## Usage
-1. python dataset.py (this downloads kinetics dataset and associated videos from youtube, which takes log time)
+1. python dataset.py (this downloads kinetics dataset and associated videos from youtube, which takes long time)
 1. python clustering.py (clusters colors that appear in the videos using kmeans)
 1. python train.py
