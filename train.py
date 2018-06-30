@@ -32,7 +32,7 @@ def estimator(ref_features, ref_labels, target_features, target_labels=None):
 
 from tensorflow.contrib.slim.python.slim.nets import resnet_v1
 from dataset import create_ref_target_generator
-from clustering import lab_to_labels
+from clustering import lab_to_labels, labels_to_lab
 from clustering import num_clusters
 
 NUM_REF = 3
@@ -54,7 +54,7 @@ labels = label_gen.get_next()
 with slim.arg_scope(resnet_v1.resnet_arg_scope()):
     _, end_points = resnet_v1.resnet_v1_101(images, 1000, is_training=True)
 with slim.arg_scope([slim.conv2d], stride=1, padding='SAME',
-                    activation_fn=tf.nn.relu, normalizer_fn=slim.batch_norm)
+                    activation_fn=tf.nn.relu, normalizer_fn=slim.batch_norm):
   with slim.arg_scope([slim.batch_norm], is_training=True):
       net = end_points[LAYER]
       feature_map = slim.conv2d(net, DIM, [1,1],
@@ -67,6 +67,8 @@ prediction = end_points['predictions']
 prediction_lab = labels_to_lab(prediction)
 loss = tf.reduce_sum(end_points['losses'])
 loss_summary = tf.summary.scalar('loss', loss)
+ph_vis_pred = tf.placeholder(tf.float32, shape=[1,None,None,3])
+ph_vis_feat = tf.placeholder(tf.float32, shape=[1,None,None,3])
 image_summary = tf.summary.merge([tf.summary.image('visualized_prediction', ph_vis_pred),
                                   tf.summary.image('visualized_feature', ph_vis_feat)])
 train_op = tf.train.AdamOptimizer().minimize(loss)
@@ -88,15 +90,15 @@ for i in xrange(100000):
     writer.add_summary(summary, i)
     
     if i % 100 == 0:
-        vis_pred = cv2.cvtColor(pred[NUM_REF], cv2.COLOR_LAB2RGB)
+        vis_pred = cv2.cvtColor(pred[0], cv2.COLOR_LAB2RGB)
         feat_flat = feat[NUM_REF].reshape(-1, feat.shape[-1])
         pca.fit(feat_flat)
         feat_flat = pca.transform(feat_flat)
         feat_flat /= np.abs(feat_flat).max()
         feat_flat = (feat_flat + 1) / 2
-        vis_feat = feat_flat.reshape(feat.shape[:2]+[3])
-        summary = sess.run(image_summary, {ph_vis_pred: vis_pred,
-                                           ph_vis_feat: vis_feat})
+        vis_feat = feat_flat.reshape(feat.shape[1:3]+(3,))
+        summary = sess.run(image_summary, {ph_vis_pred: [vis_pred],
+                                           ph_vis_feat: [vis_feat]})
         writer.add_summary(summary, i)
         
     if i % 1000 == 0:
