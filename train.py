@@ -69,7 +69,7 @@ end_points = estimator(feature_map[:NUM_REF], tf.one_hot(labels[:NUM_REF], num_c
                        feature_map[NUM_REF:], labels[NUM_REF:])
 prediction = tf.identity(end_points['predictions'], name='predictions')
 prediction_lab = labels_to_lab(prediction)
-loss = tf.reduce_sum(end_points['losses'])
+loss = tf.reduce_mean(end_points['losses'])
 train_op = tf.train.AdamOptimizer().minimize(loss)
 
 # summaries
