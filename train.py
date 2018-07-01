@@ -9,7 +9,7 @@ from clustering import num_clusters
 NUM_REF = 3
 NUM_TARGET = 1
 FEATURE_DIM = 256
-LEARNING_RATE = 0.01
+LEARNING_RATE = 0.001
 MODEL_DIR = os.path.join(os.path.dirname(__file__), 'data', 'model')
 if not os.path.exists(MODEL_DIR):
     os.mkdir(MODEL_DIR)
@@ -34,7 +34,7 @@ end_points = colorizer(feature_map[:NUM_REF], tf.one_hot(labels[:NUM_REF], num_c
                        feature_map[NUM_REF:], labels[NUM_REF:])
 prediction = tf.identity(end_points['predictions'], name='predictions')
 prediction_lab = labels_to_lab(prediction)
-loss = tf.reduce_mean(end_points['losses'])
+loss = tf.reduce_mean(end_points['losses']) * 100 # scaling loss instead of weights regularizer
 train_op = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(loss)
 
 ##### summaries
