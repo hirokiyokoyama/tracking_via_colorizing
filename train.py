@@ -9,7 +9,8 @@ from clustering import num_clusters
 NUM_REF = 3
 NUM_TARGET = 1
 FEATURE_DIM = 256
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.0001
+WEIGHT_DECAY = 0.0
 MODEL_DIR = os.path.join(os.path.dirname(__file__), 'data', 'model')
 if not os.path.exists(MODEL_DIR):
     os.mkdir(MODEL_DIR)
@@ -25,7 +26,7 @@ images = image_gen.make_one_shot_iterator().get_next(name='images')
 labels = label_gen.make_one_shot_iterator().get_next(name='labels')
 
 ##### extract features from gray scale image (only L channel) using CNN
-feature_map = feature_extractor_resnet(images[:,:,:,0:1], dim=FEATURE_DIM)
+feature_map = feature_extractor_resnet(images[:,:,:,0:1], dim=FEATURE_DIM, weight_decay=WEIGHT_DECAY)
 # rename with tf.identity so that it can be easily fetched/fed at sess.run
 feature_map = tf.identity(feature_map, name='features')
 
