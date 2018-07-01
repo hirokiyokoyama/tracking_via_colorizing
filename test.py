@@ -34,7 +34,7 @@ with tf.Session(graph=graph) as sess:
     # fetch features and predictions separately for the sake of demonstration
     # features need only images
     _features = sess.run(features, {images: _images})
-    print _feature.shape
+    print _features.shape
     # predictions need images and labels
     _predictions = sess.run(predictions, {images: _images, labels: _labels})
     print _predictions.shape
