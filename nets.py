@@ -4,7 +4,8 @@ slim = tf.contrib.slim
 
 def feature_extractor_resnet(images,
                              layer = 'resnet_v1_101/block2/unit_3/bottleneck_v1',
-                             dim = 256):
+                             dim = 256,
+                             weight_decay = 0.0000001):
     from tensorflow.contrib.slim.python.slim.nets import resnet_v1
     
     with slim.arg_scope(resnet_v1.resnet_arg_scope()):
