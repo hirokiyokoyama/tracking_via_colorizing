@@ -8,7 +8,7 @@ from clustering import num_clusters
 
 NUM_REF = 3
 NUM_TARGET = 1
-MODEL_PATH = os.path.join(os.path.dirname(__file__), 'data', 'model', 'model.ckpt')
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'data', 'model', 'model.ckpt-99000')
 
 # load images
 with tf.Graph().as_default() as graph:
@@ -19,7 +19,7 @@ with tf.Session(graph=graph) as sess:
     _images, _labels = sess.run([images, labels])
 
 with tf.Graph().as_default() as graph:
-    saver = tf.train.import_meta_graph(MODEL_PATH+'-0.meta')
+    saver = tf.train.import_meta_graph(MODEL_PATH+'.meta')
 
     # Lab image, [N,256,256,3]
     images = graph.get_tensor_by_name('images:0')
