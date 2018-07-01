@@ -73,7 +73,7 @@ for i in xrange(100000):
 
         # and images (doing some stuff to visualize outside the tf session)
         target_img = cv2.cvtColor(img[NUM_REF], cv2.COLOR_LAB2RGB)
-        vis_pred = np.dstack([img[NUM_REF,:,:,0:1], pred[0,:,:,1:]])
+        vis_pred = np.dstack([img[NUM_REF,:,:,0:1], cv2.resize(pred[0,:,:,1:], img.shape[1:3])])
         vis_pred = cv2.cvtColor(vis_pred, cv2.COLOR_LAB2RGB)
         feat_flat = feat[NUM_REF].reshape(-1, feat.shape[-1])
         pca.fit(feat_flat)
