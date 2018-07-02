@@ -33,7 +33,7 @@ def colorizer(ref_features, ref_labels, target_features, target_labels=None):
     ref_features = tf.reshape(ref_features, [-1,1,dim])
     target_features = tf.reshape(target_features, [1,-1,dim])
     inner = tf.reduce_sum(ref_features * target_features, -1)
-    weight_mat = tf.nn.softmax(inner, 1)
+    weight_mat = tf.nn.softmax(inner, 0)
 
     ref_labels = tf.convert_to_tensor(ref_labels)
     if ref_labels.dtype in [tf.float16, tf.float32, tf.float64]:

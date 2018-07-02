@@ -23,7 +23,9 @@ def create_ref_target_generator(num_ref=3, num_target=1, ref_skip=4, target_skip
             filename = os.path.join(video_dir, key+'.mp4')
             print 'Opening %s' % filename
             cap = cv2.VideoCapture(filename)
-            frames = None
+            frames = np.zeros((num_ref+num_target,
+                               int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                               int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), dtype=np.float32)
             batches = 0
             for i, skip in cycle(enumerate(skips)):
                 for _ in range(skip):
@@ -31,8 +33,6 @@ def create_ref_target_generator(num_ref=3, num_target=1, ref_skip=4, target_skip
                 ret, frame = cap.read()
                 if not ret:
                     break
-                if frames is None:
-                    frames = np.zeros((num_ref+num_target,)+frame.shape, dtype=np.float32)
                 frames[i] = cv2.cvtColor(np.float32(frame/255.), cv2.COLOR_BGR2LAB)
                 if i == num_ref + num_target - 1:
                     if num_target > 0:
