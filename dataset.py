@@ -3,6 +3,7 @@ import os
 import numpy as np
 import cv2
 import tensorflow as tf
+from itertools import cycle
 
 data_dir = os.path.join(os.path.dirname(__file__), 'data')
 kinetics_dir = os.path.join(data_dir, 'kinetics_train')
@@ -13,29 +14,33 @@ if __name__ != '__main__':
         raise ImportError('%s does not exist. Run dataset.py first.' % kinetics_path)
     kinetics = json.load(open(kinetics_path))
 
-def create_ref_target_generator(num_ref=3, num_target=1):
+def create_ref_target_generator(num_ref=3, num_target=1, ref_skip=4, target_skip=4):
+    skips = [ref_skip]*num_ref + [target_skip]*num_target
+    skips[0] = 0
+    
     def generate_frames():
         for key, entry in kinetics.iteritems():
             filename = os.path.join(video_dir, key+'.mp4')
             print 'Opening %s' % filename
             cap = cv2.VideoCapture(filename)
             frames = None
-            i = 0
-            while cap.isOpened():
+            batches = 0
+            for i, skip in cycle(enumerate(skips)):
+                for _ in skip:
+                    cap.read()
                 ret, frame = cap.read()
                 if not ret:
                     break
                 if frames is None:
                     frames = np.zeros((num_ref+num_target,)+frame.shape, dtype=np.float32)
                 frames[i] = cv2.cvtColor(np.float32(frame/255.), cv2.COLOR_BGR2LAB)
-                i += 1
-                if i == num_ref+num_target:
-                    i = 0
+                if i == num_ref + num_target - 1:
                     if num_target > 0:
                         yield frames[:num_ref], frames[num_ref:]
                     else:
                         yield frames
-            print 'Closing %s' % filename
+                    batches += 1
+            print 'Extracted %d batches from %s' % (batches, filename)
     if num_target > 0:
         types = tf.float32, tf.float32
         shapes = tf.TensorShape([num_ref,None,None,3]), tf.TensorShape([num_target,None,None,3])
