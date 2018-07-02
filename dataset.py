@@ -26,7 +26,7 @@ def create_ref_target_generator(num_ref=3, num_target=1, ref_skip=4, target_skip
             frames = None
             batches = 0
             for i, skip in cycle(enumerate(skips)):
-                for _ in skip:
+                for _ in range(skip):
                     cap.read()
                 ret, frame = cap.read()
                 if not ret:
