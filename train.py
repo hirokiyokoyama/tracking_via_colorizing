@@ -10,7 +10,7 @@ NUM_REF = 3
 NUM_TARGET = 1
 FEATURE_DIM = 256
 LEARNING_RATE = 0.0001
-WEIGHT_DECAY = 0.0
+WEIGHT_DECAY = 0.0001
 MODEL_DIR = os.path.join(os.path.dirname(__file__), 'data', 'model')
 if not os.path.exists(MODEL_DIR):
     os.mkdir(MODEL_DIR)
@@ -58,7 +58,7 @@ import cv2
 from sklearn.decomposition import PCA
 pca = PCA(n_components=3)
 
-for i in xrange(100000):
+for i in xrange(1000000):
     if i % 100 != 0:
         _, summary = sess.run([train_op, loss_summary])
         # summarize only loss
@@ -74,7 +74,7 @@ for i in xrange(100000):
 
         # and images (doing some stuff to visualize outside the tf session)
         target_img = cv2.cvtColor(img[NUM_REF], cv2.COLOR_LAB2RGB)
-        vis_pred = np.dstack([img[NUM_REF,:,:,0:1], cv2.resize(pred[0,:,:,1:], img.shape[1:3])])
+        vis_pred = np.dstack([img[NUM_REF,:,:,0:1], cv2.resize(pred[0,:,:,1:], (img.shape[2],img.shape[1]))])
         vis_pred = cv2.cvtColor(vis_pred, cv2.COLOR_LAB2RGB)
         feat_flat = feat[NUM_REF].reshape(-1, feat.shape[-1])
         pca.fit(feat_flat)

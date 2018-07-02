@@ -24,8 +24,8 @@ def create_ref_target_generator(num_ref=3, num_target=1, ref_skip=4, target_skip
             print 'Opening %s' % filename
             cap = cv2.VideoCapture(filename)
             frames = np.zeros((num_ref+num_target,
-                               int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
-                               int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), dtype=np.float32)
+                               int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+                               int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), 3), dtype=np.float32)
             batches = 0
             for i, skip in cycle(enumerate(skips)):
                 for _ in range(skip):
