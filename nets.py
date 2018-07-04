@@ -22,6 +22,29 @@ def feature_extractor_resnet(images,
                                       normalizer_fn=None)
     return feature_map
 
+def feature_extractor_resnet_conv3d(images,
+                                    layer = 'resnet_v1_101/block2/unit_3/bottleneck_v1',
+                                    dim = 256,
+                                    weight_decay = 0.0000001):
+    from tensorflow.contrib.slim.python.slim.nets import resnet_v1
+    
+    with slim.arg_scope(resnet_v1.resnet_arg_scope()):
+        _, end_points = resnet_v1.resnet_v1_101(images, 1000, is_training=True)
+    with slim.arg_scope([slim.conv3d], stride=1, padding='SAME',
+                        activation_fn=tf.nn.relu, normalizer_fn=slim.batch_norm):
+        with slim.arg_scope([slim.batch_norm], is_training=True):
+            net = end_points[layer]
+            net = slim.conv3d(net, dim, [2,3,3])
+            net = slim.conv3d(net, dim, [2,3,3])
+            net = slim.conv3d(net, dim, [2,3,3])
+            net = slim.conv3d(net, dim, [2,3,3])
+
+            # the last layer without activation function
+            feature_map = slim.conv2d(net, dim, [1,1,1],
+                                      activation_fn=None,
+                                      normalizer_fn=None)
+    return feature_map
+
 def colorizer(ref_features, ref_labels, target_features, target_labels=None):
     # ref_features: [N_REF,H,W,D], feature map from reference frames
     # ref_labels: [N_REF,H,W,d], category probabilities or one-hot vectors from reference frames

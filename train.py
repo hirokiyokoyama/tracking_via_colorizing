@@ -1,7 +1,8 @@
 import tensorflow as tf
 import numpy as np
 import os
-from nets import feature_extractor_resnet, colorizer
+from nets import feature_extractor_resnet_conv3d as feature_extractor
+from nets import colorizer
 from dataset import create_ref_target_generator
 from clustering import lab_to_labels, labels_to_lab
 from clustering import num_clusters
@@ -26,7 +27,7 @@ images = image_gen.make_one_shot_iterator().get_next(name='images')
 labels = label_gen.make_one_shot_iterator().get_next(name='labels')
 
 ##### extract features from gray scale image (only L channel) using CNN
-feature_map = feature_extractor_resnet(images[:,:,:,0:1], dim=FEATURE_DIM, weight_decay=WEIGHT_DECAY)
+feature_map = feature_extractor(images[:,:,:,0:1], dim=FEATURE_DIM, weight_decay=WEIGHT_DECAY)
 # rename with tf.identity so that it can be easily fetched/fed at sess.run
 feature_map = tf.identity(feature_map, name='features')
 
