@@ -33,14 +33,14 @@ def feature_extractor_resnet_conv3d(images,
     with slim.arg_scope([slim.conv3d], stride=1, padding='SAME',
                         activation_fn=tf.nn.relu, normalizer_fn=slim.batch_norm):
         with slim.arg_scope([slim.batch_norm], is_training=True):
-            net = end_points[layer]
+            net = tf.expand_dims(end_points[layer], 0)
             net = slim.conv3d(net, dim, [2,3,3])
             net = slim.conv3d(net, dim, [2,3,3])
             net = slim.conv3d(net, dim, [2,3,3])
-            net = slim.conv3d(net, dim, [2,3,3])
+            net = slim.conv3d(net, dim, [2,3,3])[0]
 
             # the last layer without activation function
-            feature_map = slim.conv2d(net, dim, [1,1,1],
+            feature_map = slim.conv2d(net, dim, [1,1],
                                       activation_fn=None,
                                       normalizer_fn=None)
     return feature_map
