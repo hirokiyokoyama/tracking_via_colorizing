@@ -15,6 +15,7 @@ For details, see https://ai.googleblog.com/2018/06/self-supervised-tracking-via-
 1. python clustering.py (clusters colors that appear in the videos using kmeans)
 1. python train.py
 
+Step 1 lasts almost forever! You can go to step 2 and 3 while running dataset.py. Missing videos will be ignored.
 To watch the progress of training, run the following command and browse http://\<its IP address\>:6006.
 
     tensorboard --logdir=data/model
