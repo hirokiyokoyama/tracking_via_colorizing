@@ -5,14 +5,15 @@ slim = tf.contrib.slim
 def feature_extractor_resnet(images,
                              layer = 'resnet_v1_101/block2/unit_3/bottleneck_v1',
                              dim = 256,
-                             weight_decay = 0.0000001):
+                             weight_decay = 0.0000001,
+                             is_training = True):
     from tensorflow.contrib.slim.python.slim.nets import resnet_v1
     
     with slim.arg_scope(resnet_v1.resnet_arg_scope()):
-        _, end_points = resnet_v1.resnet_v1_101(images, 1000, is_training=True)
+        _, end_points = resnet_v1.resnet_v1_101(images, 1000, is_training=is_training)
     with slim.arg_scope([slim.conv2d], stride=1, padding='SAME',
                         activation_fn=tf.nn.relu, normalizer_fn=slim.batch_norm):
-        with slim.arg_scope([slim.batch_norm], is_training=True):
+        with slim.arg_scope([slim.batch_norm], is_training=is_training):
             net = end_points[layer]
             # you can add convolutional layers here
 
@@ -25,14 +26,15 @@ def feature_extractor_resnet(images,
 def feature_extractor_resnet_conv3d(images,
                                     layer = 'resnet_v1_101/block2/unit_3/bottleneck_v1',
                                     dim = 256,
-                                    weight_decay = 0.0000001):
+                                    weight_decay = 0.0000001,
+                                    is_training = True):
     from tensorflow.contrib.slim.python.slim.nets import resnet_v1
     
     with slim.arg_scope(resnet_v1.resnet_arg_scope()):
-        _, end_points = resnet_v1.resnet_v1_101(images, 1000, is_training=True)
+        _, end_points = resnet_v1.resnet_v1_101(images, 1000, is_training=is_training)
     with slim.arg_scope([slim.conv3d], stride=1, padding='SAME',
                         activation_fn=tf.nn.relu, normalizer_fn=slim.batch_norm):
-        with slim.arg_scope([slim.batch_norm], is_training=True):
+        with slim.arg_scope([slim.batch_norm], is_training=is_training):
             net = tf.expand_dims(end_points[layer], 0)
             net = slim.conv3d(net, dim, [2,3,3])
             net = slim.conv3d(net, dim, [2,3,3])

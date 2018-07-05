@@ -25,9 +25,12 @@ label_gen = data.map(lambda x: tf.image.resize_images(x, [32,32])).map(lab_to_la
 images = image_gen.make_one_shot_iterator().get_next(name='images')
 # color labels (or other categorical data), [N,32,32,d], can be fed at sess.run
 labels = label_gen.make_one_shot_iterator().get_next(name='labels')
+# can be fed at sess.run, False by default
+is_training = tf.constant(False, name='is_training')
 
 ##### extract features from gray scale image (only L channel) using CNN
-feature_map = feature_extractor(images[:,:,:,0:1], dim=FEATURE_DIM, weight_decay=WEIGHT_DECAY)
+feature_map = feature_extractor(images[:,:,:,0:1], dim=FEATURE_DIM, weight_decay=WEIGHT_DECAY,
+                                is_training = is_training)
 # rename with tf.identity so that it can be easily fetched/fed at sess.run
 feature_map = tf.identity(feature_map, name='features')
 
@@ -37,7 +40,9 @@ end_points = colorizer(feature_map[:NUM_REF], tf.one_hot(labels[:NUM_REF], num_c
 prediction = tf.identity(end_points['predictions'], name='predictions')
 prediction_lab = labels_to_lab(prediction)
 loss = tf.reduce_mean(end_points['losses'])
-train_op = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(loss)
+update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+with tf.control_dependencies(update_ops):
+    train_op = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(loss)
 
 ##### summaries
 loss_summary = tf.summary.scalar('loss', loss)
@@ -61,7 +66,7 @@ pca = PCA(n_components=3)
 
 for i in xrange(1000000):
     if i % 100 != 0:
-        _, summary = sess.run([train_op, loss_summary])
+        _, summary = sess.run([train_op, loss_summary], {is_training: True})
         # summarize only loss
         writer.add_summary(summary, i)
     else:
@@ -69,7 +74,7 @@ for i in xrange(1000000):
                                                 feature_map,
                                                 prediction_lab,
                                                 train_op,
-                                                loss_summary])
+                                                loss_summary], {is_training: True})
         # summarize loss
         writer.add_summary(summary, i)
 
