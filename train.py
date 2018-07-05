@@ -26,7 +26,7 @@ images = image_gen.make_one_shot_iterator().get_next(name='images')
 # color labels (or other categorical data), [N,32,32,d], can be fed at sess.run
 labels = label_gen.make_one_shot_iterator().get_next(name='labels')
 # can be fed at sess.run, False by default
-is_training = tf.constant(False, name='is_training')
+is_training = tf.placeholder_with_default(False, [], name='is_training')
 
 ##### extract features from gray scale image (only L channel) using CNN
 feature_map = feature_extractor(images[:,:,:,0:1], dim=FEATURE_DIM, weight_decay=WEIGHT_DECAY,
