@@ -4,8 +4,7 @@ import os
 from nets import feature_extractor_resnet_conv3d as feature_extractor
 from nets import colorizer
 from dataset import create_ref_target_generator
-from clustering import lab_to_labels, labels_to_lab
-from clustering import num_clusters
+from clustering import Clustering
 
 NUM_REF = 3
 NUM_TARGET = 1
@@ -15,11 +14,12 @@ WEIGHT_DECAY = 0.0001
 MODEL_DIR = os.path.join(os.path.dirname(__file__), 'data', 'model')
 if not os.path.exists(MODEL_DIR):
     os.mkdir(MODEL_DIR)
+kmeans = Clustering()
 
 ##### create dataset
 data = create_ref_target_generator(NUM_REF, NUM_TARGET).repeat().map(lambda x,y: tf.concat([x,y], 0))
 image_gen = data.map(lambda x: tf.image.resize_images(x, [256,256]))
-label_gen = data.map(lambda x: tf.image.resize_images(x, [32,32])).map(lab_to_labels)
+label_gen = data.map(lambda x: tf.image.resize_images(x, [32,32])).map(kmeans.lab_to_labels)
 
 # Lab image, [N,256,256,3], can be fed at sess.run
 images = image_gen.make_one_shot_iterator().get_next(name='images')
@@ -35,10 +35,10 @@ feature_map = feature_extractor(images[:,:,:,0:1], dim=FEATURE_DIM, weight_decay
 feature_map = tf.identity(feature_map, name='features')
 
 ##### predict the color (or other category) on the basis of the features
-end_points = colorizer(feature_map[:NUM_REF], tf.one_hot(labels[:NUM_REF], num_clusters),
+end_points = colorizer(feature_map[:NUM_REF], tf.one_hot(labels[:NUM_REF], kmeans.num_clusters),
                        feature_map[NUM_REF:], labels[NUM_REF:])
 prediction = tf.identity(end_points['predictions'], name='predictions')
-prediction_lab = labels_to_lab(prediction)
+prediction_lab = kmeans.labels_to_lab(prediction)
 loss = tf.reduce_mean(end_points['losses'])
 global_step = tf.Variable(0, trainable=False)
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
