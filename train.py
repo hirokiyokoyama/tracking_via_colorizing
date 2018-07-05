@@ -40,9 +40,10 @@ end_points = colorizer(feature_map[:NUM_REF], tf.one_hot(labels[:NUM_REF], num_c
 prediction = tf.identity(end_points['predictions'], name='predictions')
 prediction_lab = labels_to_lab(prediction)
 loss = tf.reduce_mean(end_points['losses'])
+global_step = tf.Variable(0, trainable=False)
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 with tf.control_dependencies(update_ops):
-    train_op = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(loss)
+    train_op = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(loss, global_step=global_step)
 
 ##### summaries
 loss_summary = tf.summary.scalar('loss', loss)
@@ -58,13 +59,17 @@ writer = tf.summary.FileWriter(MODEL_DIR)
 saver = tf.train.Saver()
 sess = tf.Session()
 sess.run(tf.global_variables_initializer())
+latest_ckpt = tf.train.latest_checkpoint(MODEL_DIR)
+if latest_ckpt is not None:
+    saver.restore(sess, latest_ckpt)
 
 ##### main loop
 import cv2
 from sklearn.decomposition import PCA
 pca = PCA(n_components=3)
 
-for i in xrange(1000000):
+while True:
+    i = tf.train.global_step(sess, global_step)
     if i % 100 != 0:
         _, summary = sess.run([train_op, loss_summary], {is_training: True})
         # summarize only loss
@@ -93,6 +98,6 @@ for i in xrange(1000000):
                                            ph_vis_feat: [vis_feat]})
         writer.add_summary(summary, i)
         
-    if i % 1000 == 0:
+    if i+1 % 1000 == 0:
         # save the model
-        saver.save(sess, os.path.join(MODEL_DIR, 'model.ckpt'), global_step=i)
+        saver.save(sess, os.path.join(MODEL_DIR, 'model.ckpt'), global_step=global_step)
