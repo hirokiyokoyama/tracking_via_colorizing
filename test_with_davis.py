@@ -83,9 +83,11 @@ if __name__=='__main__':
 
         images = graph.get_tensor_by_name('images:0')
         features = graph.get_tensor_by_name('features:0')
-
-        end_points = colorizer(features[0:1], annotation, features[3:4])
+        annotations = tf.placeholder(tf.float32, shape=[3,32,32,n_colors])
+        
+        end_points = colorizer(features[0:3], annotations, features[3:4])
         predictions = end_points['predictions']
+        temperature = end_points['temperature']
 
     def apply_mask(image, mask):
         return mask[:,:,0:1] * image + (np.expand_dims(mask[:,:,1:], -1) * colors[1:].reshape(1,1,-1,3)).sum(2)
@@ -94,9 +96,14 @@ if __name__=='__main__':
     with tf.Session(graph=graph) as sess:
         saver.restore(sess, model_path)
 
-        for t in xrange(all_images.shape[0]):
-            _images = all_images_gray[[0,0,0,t]]
-            _predictions = sess.run(predictions, {images: _images})
+        _annotations = np.expand_dims(annotation, 0).repeat(3, 0)
+        for t in xrange(1, all_images.shape[0]):
+            _images = all_images_gray[[max(t-3,0),max(t-2,0),t-1,t]]
+            _predictions = sess.run(predictions, {images: _images,
+                                                  annotations: _annotations,
+                                                  temperature: 0.5})
+            _annotations = np.roll(_annotations, -1, 0)
+            _annotations[-1] = _predictions[0]
             mask = cv2.resize(_predictions[0], (all_images.shape[2], all_images.shape[1]))
             cv2.imshow('Target frame', apply_mask(all_images[t], mask))
             cv2.waitKey(1)

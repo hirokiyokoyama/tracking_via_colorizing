@@ -65,7 +65,8 @@ def colorizer(ref_features, ref_labels, target_features, target_labels=None):
     ref_features = tf.reshape(ref_features, [-1,1,dim])
     target_features = tf.reshape(target_features, [1,-1,dim])
     inner = tf.reduce_sum(ref_features * target_features, -1)
-    weight_mat = tf.nn.softmax(inner, 0)
+    temperature = tf.placeholder_with_default(1., [], name='temperature')
+    weight_mat = tf.nn.softmax(inner/temperature, 0)
 
     ref_labels = tf.convert_to_tensor(ref_labels)
     if ref_labels.dtype in [tf.float16, tf.float32, tf.float64]:
@@ -75,7 +76,10 @@ def colorizer(ref_features, ref_labels, target_features, target_labels=None):
         #ref_labels = tf.one_hot(tf.reshape(ref_labels,[-1,1]), )
     prediction = tf.reduce_sum(tf.expand_dims(weight_mat, -1) * ref_labels, 0)
     prediction = tf.reshape(prediction, tf.concat([bhw, [-1]], 0))
-    end_points = {'logit_matrix': inner, 'weight_matrix': weight_mat, 'predictions': prediction}
+    end_points = {'logit_matrix': inner,
+                  'weight_matrix': weight_mat,
+                  'temperature': temperature,
+                  'predictions': prediction}
     
     if target_labels is not None:
         target_labels = tf.convert_to_tensor(target_labels)
