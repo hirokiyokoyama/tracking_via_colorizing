@@ -5,7 +5,7 @@ slim = tf.contrib.slim
 def feature_extractor_resnet(images,
                              layer = 'resnet_v1_101/block2/unit_3/bottleneck_v1',
                              dim = 256,
-                             weight_decay = 0.0000001,
+                             weight_decay = 0.0001,
                              is_training = True):
     from tensorflow.contrib.slim.python.slim.nets import resnet_v1
     
@@ -24,22 +24,29 @@ def feature_extractor_resnet(images,
     return feature_map
 
 def feature_extractor_resnet_conv3d(images,
-                                    layer = 'resnet_v1_101/block2/unit_3/bottleneck_v1',
                                     dim = 256,
-                                    weight_decay = 0.0000001,
+                                    weight_decay = 0.0001,
                                     is_training = True):
-    from tensorflow.contrib.slim.python.slim.nets import resnet_v1
+    from tensorflow.contrib.slim.python.slim.nets import resnet_v2
     
-    with slim.arg_scope(resnet_v1.resnet_arg_scope()):
-        _, end_points = resnet_v1.resnet_v1_101(images, 1000, is_training=is_training)
+    with slim.arg_scope(resnet_v2.resnet_arg_scope()):
+        blocks = [
+            resnet_v2.resnet_v2_block('block1', base_depth=16, num_units=3, stride=2),
+            resnet_v2.resnet_v2_block('block2', base_depth=32, num_units=4, stride=2),
+            resnet_v2.resnet_v2_block('block3', base_depth=64, num_units=6, stride=2),
+            resnet_v2.resnet_v2_block('block4', base_depth=128, num_units=3, stride=1)
+        ]
+        _, end_points = resnet_v2.resnet_v2(images, blocks,
+                                            is_training=is_training,
+                                            include_root_block=False)
     with slim.arg_scope([slim.conv3d], stride=1, padding='SAME',
                         activation_fn=tf.nn.relu, normalizer_fn=slim.batch_norm):
         with slim.arg_scope([slim.batch_norm], is_training=is_training):
-            net = tf.expand_dims(end_points[layer], 0)
-            net = slim.conv3d(net, dim, [2,3,3])
-            net = slim.conv3d(net, dim, [2,3,3])
-            net = slim.conv3d(net, dim, [2,3,3])
-            net = slim.conv3d(net, dim, [2,3,3])[0]
+            net = tf.expand_dims(end_points['resnet_v2/block3'], 0)
+            net = slim.conv3d(net, dim, [3,3,3])
+            net = slim.conv3d(net, dim, [3,3,3])
+            net = slim.conv3d(net, dim, [3,3,3])
+            net = slim.conv3d(net, dim, [3,3,3])[0]
 
             # the last layer without activation function
             feature_map = slim.conv2d(net, dim, [1,1],
