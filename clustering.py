@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 import os
 from tensorflow.contrib.factorization import KMeansClustering
-from dataset import create_batch_generator
 
 kmeans_dir = os.path.join(os.path.dirname(__file__), 'data', 'kmeans')
 
@@ -32,6 +31,7 @@ def labels_to_lab(labels):
     return tf.concat([tf.expand_dims(l,-1), ab], 3)
 
 if __name__=='__main__':
+    from dataset import create_batch_generator
     def preprocess(x):
         x = tf.image.resize_images(x, [32,32])
         return tf.reshape(x[:,:,:,1:], [-1,2])
