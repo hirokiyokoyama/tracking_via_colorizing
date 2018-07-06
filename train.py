@@ -9,7 +9,7 @@ from clustering import Clustering, visualize_ab_clusters
 NUM_REF = 3
 NUM_TARGET = 1
 NUM_CLUSTERS = 16
-KMEANS_STEPS_PER_ITERATION=100
+KMEANS_STEPS_PER_ITERATION = 100
 FEATURE_DIM = 128
 LEARNING_RATE = 0.0001
 WEIGHT_DECAY = 0.0001
@@ -109,6 +109,6 @@ while True:
                                            ph_vis_feat: [vis_feat]})
         writer.add_summary(summary, i)
         
-    if i+1 % 1000 == 0:
+    if (i+1) % 1000 == 0:
         # save the model
         saver.save(sess, os.path.join(MODEL_DIR, 'model.ckpt'), global_step=global_step)
