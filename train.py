@@ -4,27 +4,30 @@ import os
 from nets import feature_extractor_resnet_conv3d as feature_extractor
 from nets import colorizer
 from dataset import create_ref_target_generator
-from clustering import Clustering
+from clustering import Clustering, visualize_ab_clusters
 
 NUM_REF = 3
 NUM_TARGET = 1
+NUM_CLUSTERS = 16
+KMEANS_STEPS_PER_ITERATION=100
 FEATURE_DIM = 256
 LEARNING_RATE = 0.0001
 WEIGHT_DECAY = 0.0001
 MODEL_DIR = os.path.join(os.path.dirname(__file__), 'data', 'model')
 if not os.path.exists(MODEL_DIR):
     os.mkdir(MODEL_DIR)
-kmeans = Clustering()
 
 ##### create dataset
 data = create_ref_target_generator(NUM_REF, NUM_TARGET).repeat().map(lambda x,y: tf.concat([x,y], 0))
-image_gen = data.map(lambda x: tf.image.resize_images(x, [256,256]))
-label_gen = data.map(lambda x: tf.image.resize_images(x, [32,32])).map(kmeans.lab_to_labels)
 
+raw_images = data.make_one_shot_iterator().get_next()
+kmeans = Clustering(tf.reshape(raw_images[:,:,:,1:], [-1,2]), NUM_CLUSTERS,
+                    mini_batch_steps_per_iteration=KMEANS_STEPS_PER_ITERATION)
 # Lab image, [N,256,256,3], can be fed at sess.run
-images = image_gen.make_one_shot_iterator().get_next(name='images')
+images = tf.image.resize_images(raw_images, [256,256], name='images')
 # color labels (or other categorical data), [N,32,32,d], can be fed at sess.run
-labels = label_gen.make_one_shot_iterator().get_next(name='labels')
+labels = tf.image.resize_images(raw_images, [32,32])
+labels = kmeans.lab_to_labels(labels, name='labels')
 # can be fed at sess.run, False by default
 is_training = tf.placeholder_with_default(False, [], name='is_training')
 
@@ -35,7 +38,7 @@ feature_map = feature_extractor(images[:,:,:,0:1], dim=FEATURE_DIM, weight_decay
 feature_map = tf.identity(feature_map, name='features')
 
 ##### predict the color (or other category) on the basis of the features
-end_points = colorizer(feature_map[:NUM_REF], tf.one_hot(labels[:NUM_REF], kmeans.num_clusters),
+end_points = colorizer(feature_map[:NUM_REF], tf.one_hot(labels[:NUM_REF], NUM_CLUSTERS),
                        feature_map[NUM_REF:], labels[NUM_REF:])
 prediction = tf.identity(end_points['predictions'], name='predictions')
 prediction_lab = kmeans.labels_to_lab(prediction)
@@ -50,6 +53,7 @@ loss_summary = tf.summary.scalar('loss', loss)
 ph_target_img = tf.placeholder(tf.float32, shape=[1,None,None,3])
 ph_vis_pred = tf.placeholder(tf.float32, shape=[1,None,None,3])
 ph_vis_feat = tf.placeholder(tf.float32, shape=[1,None,None,3])
+kmeans_summary = tf.summary.image('kmeans_clusters', visualize_ab_clusters(kmeans.cluster_centers))
 image_summary = tf.summary.merge([tf.summary.image('target_image', ph_target_img),
                                   tf.summary.image('visualized_prediction', ph_vis_pred),
                                   tf.summary.image('visualized_feature', ph_vis_feat)])
@@ -62,6 +66,8 @@ sess.run(tf.global_variables_initializer())
 latest_ckpt = tf.train.latest_checkpoint(MODEL_DIR)
 if latest_ckpt is not None:
     saver.restore(sess, latest_ckpt)
+else:
+    sess.run(kmeans.init_op)
 
 ##### main loop
 import cv2
@@ -71,17 +77,28 @@ pca = PCA(n_components=3)
 while True:
     i = tf.train.global_step(sess, global_step)
     if i % 100 != 0:
-        _, summary = sess.run([train_op, loss_summary], {is_training: True})
-        # summarize only loss
-        writer.add_summary(summary, i)
+        if i % 10 != 0:
+            _, summary = sess.run([train_op, loss_summary], {is_training: True})
+            # summarize only loss
+            writer.add_summary(summary, i)
+        else:
+            _, summary, _, km_summary = sess.run([train_op, loss_summary,
+                                                  kmeans.train_op, kmeans_summary],
+                                                 {is_training: True})
+            # summarize only loss
+            writer.add_summary(summary, i)
+            writer.add_summary(km_summary, i)
     else:
-        img, feat, pred, _, summary = sess.run([images,
-                                                feature_map,
-                                                prediction_lab,
-                                                train_op,
-                                                loss_summary], {is_training: True})
+        img, feat, pred, _, summary, _, km_summary = sess.run([images,
+                                                               feature_map,
+                                                               prediction_lab,
+                                                               train_op,
+                                                               loss_summary,
+                                                               kmeans.train_op,
+                                                               kmeans_summary], {is_training: True})
         # summarize loss
         writer.add_summary(summary, i)
+        writer.add_summary(km_summary, i)
 
         # and images (doing some stuff to visualize outside the tf session)
         target_img = cv2.cvtColor(img[NUM_REF], cv2.COLOR_LAB2RGB)
