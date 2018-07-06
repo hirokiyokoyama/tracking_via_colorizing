@@ -10,7 +10,7 @@ NUM_REF = 3
 NUM_TARGET = 1
 NUM_CLUSTERS = 16
 KMEANS_STEPS_PER_ITERATION=100
-FEATURE_DIM = 256
+FEATURE_DIM = 128
 LEARNING_RATE = 0.0001
 WEIGHT_DECAY = 0.0001
 MODEL_DIR = os.path.join(os.path.dirname(__file__), 'data', 'model')
@@ -21,10 +21,11 @@ if not os.path.exists(MODEL_DIR):
 data = create_ref_target_generator(NUM_REF, NUM_TARGET).repeat().map(lambda x,y: tf.concat([x,y], 0))
 
 raw_images = data.make_one_shot_iterator().get_next()
-kmeans = Clustering(tf.reshape(raw_images[:,:,:,1:], [-1,2]), NUM_CLUSTERS,
-                    mini_batch_steps_per_iteration=KMEANS_STEPS_PER_ITERATION)
 # Lab image, [N,256,256,3], can be fed at sess.run
-images = tf.image.resize_images(raw_images, [256,256], name='images')
+images = tf.image.resize_images(raw_images, [256,256])
+images = tf.identity(images, name='images')
+kmeans = Clustering(tf.reshape(images[:,:,:,1:], [-1,2]), NUM_CLUSTERS,
+                    mini_batch_steps_per_iteration=KMEANS_STEPS_PER_ITERATION)
 # color labels (or other categorical data), [N,32,32,d], can be fed at sess.run
 labels = tf.image.resize_images(raw_images, [32,32])
 labels = kmeans.lab_to_labels(labels, name='labels')
@@ -53,7 +54,8 @@ loss_summary = tf.summary.scalar('loss', loss)
 ph_target_img = tf.placeholder(tf.float32, shape=[1,None,None,3])
 ph_vis_pred = tf.placeholder(tf.float32, shape=[1,None,None,3])
 ph_vis_feat = tf.placeholder(tf.float32, shape=[1,None,None,3])
-kmeans_summary = tf.summary.image('kmeans_clusters', visualize_ab_clusters(kmeans.cluster_centers))
+kmeans_summary = tf.summary.image('kmeans_clusters',
+                                  tf.expand_dims(visualize_ab_clusters(kmeans.cluster_centers), 0))
 image_summary = tf.summary.merge([tf.summary.image('target_image', ph_target_img),
                                   tf.summary.image('visualized_prediction', ph_vis_pred),
                                   tf.summary.image('visualized_feature', ph_vis_feat)])
@@ -76,29 +78,21 @@ pca = PCA(n_components=3)
 
 while True:
     i = tf.train.global_step(sess, global_step)
+    if i % 10 == 0:
+        _, summary = sess.run([kmeans.train_op, kmeans_summary])
+        writer.add_summary(summary, i)
     if i % 100 != 0:
-        if i % 10 != 0:
-            _, summary = sess.run([train_op, loss_summary], {is_training: True})
-            # summarize only loss
-            writer.add_summary(summary, i)
-        else:
-            _, summary, _, km_summary = sess.run([train_op, loss_summary,
-                                                  kmeans.train_op, kmeans_summary],
-                                                 {is_training: True})
-            # summarize only loss
-            writer.add_summary(summary, i)
-            writer.add_summary(km_summary, i)
+        _, summary = sess.run([train_op, loss_summary], {is_training: True})
+        # summarize only loss
+        writer.add_summary(summary, i)
     else:
-        img, feat, pred, _, summary, _, km_summary = sess.run([images,
-                                                               feature_map,
-                                                               prediction_lab,
-                                                               train_op,
-                                                               loss_summary,
-                                                               kmeans.train_op,
-                                                               kmeans_summary], {is_training: True})
+        img, feat, pred, _, summary = sess.run([images,
+                                                feature_map,
+                                                prediction_lab,
+                                                train_op,
+                                                loss_summary], {is_training: True})
         # summarize loss
         writer.add_summary(summary, i)
-        writer.add_summary(km_summary, i)
 
         # and images (doing some stuff to visualize outside the tf session)
         target_img = cv2.cvtColor(img[NUM_REF], cv2.COLOR_LAB2RGB)

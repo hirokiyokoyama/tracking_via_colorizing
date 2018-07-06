@@ -58,12 +58,12 @@ class Clustering:
         return tf.argmin(d, 3, name=name)
 
     def labels_to_lab(self, labels, name='labels_to_lab'):
-        if labels.dtype in [np.float16, np.float32, np.float64]:
+        if labels.dtype in [tf.float16, tf.float32, tf.float64]:
             l = tf.cast(tf.expand_dims(labels,-1), tf.float32)
-            c = tf.reshape(clusters, [1,1,1,-1,2])
+            c = tf.reshape(self.cluster_centers, [1,1,1,-1,2])
             ab = tf.reduce_sum(l * c, 3)
         else:
-            ab = tf.gather(clusters, labels)
+            ab = tf.gather(self.cluster_centers, labels)
         l = tf.ones(tf.shape(ab)[:-1], tf.float32) * 75
         return tf.concat([tf.expand_dims(l,-1), ab], 3, name=name)
     
