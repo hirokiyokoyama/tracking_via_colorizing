@@ -101,7 +101,8 @@ if __name__=='__main__':
             _images = all_images_gray[[max(t-3,0),max(t-2,0),t-1,t]]
             _predictions = sess.run(predictions, {images: _images,
                                                   annotations: _annotations,
-                                                  temperature: 0.5})
+                                                  temperature: 0.5,
+                                                  'is_training:0': True})
             _annotations = np.roll(_annotations, -1, 0)
             _annotations[-1] = _predictions[0]
             mask = cv2.resize(_predictions[0], (all_images.shape[2], all_images.shape[1]))
