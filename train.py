@@ -13,6 +13,7 @@ KMEANS_STEPS_PER_ITERATION = 100
 FEATURE_DIM = 128
 LEARNING_RATE = 0.0001
 WEIGHT_DECAY = 0.0001
+BATCH_NORM_DECAY = 0.9999
 MODEL_DIR = os.path.join(os.path.dirname(__file__), 'data', 'model')
 if not os.path.exists(MODEL_DIR):
     os.mkdir(MODEL_DIR)
@@ -33,7 +34,7 @@ labels = kmeans.lab_to_labels(labels, name='labels')
 is_training = tf.placeholder_with_default(False, [], name='is_training')
 
 ##### extract features from gray scale image (only L channel) using CNN
-feature_map = feature_extractor(images[:,:,:,0:1], dim=FEATURE_DIM, weight_decay=WEIGHT_DECAY,
+feature_map = feature_extractor(images[:,:,:,0:1], dim=FEATURE_DIM, weight_decay=WEIGHT_DECAY, batch_norm_decay=BATCH_NORM_DECAY,
                                 is_training = is_training)
 # rename with tf.identity so that it can be easily fetched/fed at sess.run
 feature_map = tf.identity(feature_map, name='features')

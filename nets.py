@@ -6,10 +6,11 @@ def feature_extractor_resnet(images,
                              layer = 'resnet_v1_101/block2/unit_3/bottleneck_v1',
                              dim = 256,
                              weight_decay = 0.0001,
+                             batch_norm_decay = 0.997,
                              is_training = True):
     from tensorflow.contrib.slim.python.slim.nets import resnet_v1
     
-    with slim.arg_scope(resnet_v1.resnet_arg_scope()):
+    with slim.arg_scope(resnet_v1.resnet_arg_scope(weight_decay=weight_decay, batch_norm_decay=batch_norm_decay)):
         _, end_points = resnet_v1.resnet_v1_101(images, 1000, is_training=is_training)
     with slim.arg_scope([slim.conv2d], stride=1, padding='SAME',
                         activation_fn=tf.nn.relu, normalizer_fn=slim.batch_norm):
@@ -26,10 +27,11 @@ def feature_extractor_resnet(images,
 def feature_extractor_resnet_conv3d(images,
                                     dim = 256,
                                     weight_decay = 0.0001,
+                                    batch_norm_decay = 0.997,
                                     is_training = True):
     from tensorflow.contrib.slim.python.slim.nets import resnet_v2
     
-    with slim.arg_scope(resnet_v2.resnet_arg_scope()):
+    with slim.arg_scope(resnet_v2.resnet_arg_scope(weight_decay=weight_decay, batch_norm_decay=batch_norm_decay)):
         blocks = [
             resnet_v2.resnet_v2_block('block1', base_depth=16, num_units=3, stride=2),
             resnet_v2.resnet_v2_block('block2', base_depth=32, num_units=4, stride=2),
