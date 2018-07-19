@@ -11,9 +11,9 @@ NUM_TARGET = 1
 NUM_CLUSTERS = 16
 KMEANS_STEPS_PER_ITERATION = 100
 FEATURE_DIM = 128
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 0.00001
 WEIGHT_DECAY = 0.0001
-BATCH_NORM_DECAY = 0.9999
+BATCH_NORM_DECAY = 0.95
 MODEL_DIR = os.path.join(os.path.dirname(__file__), 'data', 'model')
 if not os.path.exists(MODEL_DIR):
     os.mkdir(MODEL_DIR)

@@ -34,7 +34,7 @@ def feature_extractor_resnet(images,
         _, end_points = resnet_v1.resnet_v1_101(images, 1000, is_training=is_training)
 
     arg_scope = convert_resnet_arg_scope_to_slim(resnet_arg_scope)
-    arg_scope[slim.conv2d].update({'stride': 1, 'padding'='SAME'})
+    arg_scope[slim.conv2d].update({'stride': 1, 'padding': 'SAME'})
     arg_scope[slim.batch_norm]['is_training'] = is_training
     
     with slim.arg_scope(arg_scope):
@@ -72,7 +72,7 @@ def feature_extractor_resnet_conv3d(images,
                                             include_root_block=False)
 
     arg_scope = convert_resnet_arg_scope_to_slim(resnet_arg_scope)
-    arg_scope[slim.conv3d].update({'stride': 1, 'padding'='SAME'})
+    arg_scope[slim.conv3d].update({'stride': 1, 'padding': 'SAME'})
     arg_scope[slim.batch_norm]['is_training'] = is_training
     with slim.arg_scope(arg_scope):
         net = tf.expand_dims(end_points['resnet_v2/block3'], 0)
