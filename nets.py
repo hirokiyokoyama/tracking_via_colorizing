@@ -2,6 +2,20 @@ import tensorflow as tf
 import numpy as np
 slim = tf.contrib.slim
 
+def convert_resnet_arg_scope_to_slim(resnet_arg_scope):
+    arg_scope = {}
+    for k, v in resnet_arg_scope.items():
+        v = dict(v)
+        if 'batch_norm' in k:
+            k = slim.batch_norm
+        elif 'max_pool2d' in k:
+            k = slim.max_pool2d
+        elif 'convolution' in k:
+            k = slim.convolution
+            v['normalizer_fn'] = slim.batch_norm
+        arg_scope[k] = v
+    return arg_scope
+
 def feature_extractor_resnet(images,
                              layer = 'resnet_v1_101/block2/unit_3/bottleneck_v1',
                              dim = 256,
@@ -9,19 +23,28 @@ def feature_extractor_resnet(images,
                              batch_norm_decay = 0.997,
                              is_training = True):
     from tensorflow.contrib.slim.python.slim.nets import resnet_v1
-    
-    with slim.arg_scope(resnet_v1.resnet_arg_scope(weight_decay=weight_decay, batch_norm_decay=batch_norm_decay)):
-        _, end_points = resnet_v1.resnet_v1_101(images, 1000, is_training=is_training)
-    with slim.arg_scope([slim.conv2d], stride=1, padding='SAME',
-                        activation_fn=tf.nn.relu, normalizer_fn=slim.batch_norm):
-        with slim.arg_scope([slim.batch_norm], is_training=is_training):
-            net = end_points[layer]
-            # you can add convolutional layers here
 
-            # the last layer without activation function
-            feature_map = slim.conv2d(net, dim, [1,1],
-                                      activation_fn=None,
-                                      normalizer_fn=None)
+    resnet_arg_scope = resnet_v1.resnet_arg_scope(weight_decay=weight_decay,
+                                                  batch_norm_decay=batch_norm_decay)
+    # batch size is small so we use batch renormalization
+    batch_norm_key = filter(lambda x: 'batch_norm' in x, resnet_arg_scope.keys())[0]
+    resnet_arg_scope[batch_norm_key]['renorm'] = True
+    
+    with slim.arg_scope(resnet_arg_scope):
+        _, end_points = resnet_v1.resnet_v1_101(images, 1000, is_training=is_training)
+
+    arg_scope = convert_resnet_arg_scope_to_slim(resnet_arg_scope)
+    arg_scope[slim.conv2d].update({'stride': 1, 'padding'='SAME'})
+    arg_scope[slim.batch_norm]['is_training'] = is_training
+    
+    with slim.arg_scope(arg_scope):
+        net = end_points[layer]
+        # you can add convolutional layers here
+
+        # the last layer without activation function
+        feature_map = slim.conv2d(net, dim, [1,1],
+                                  activation_fn=None,
+                                  normalizer_fn=None)
     return feature_map
 
 def feature_extractor_resnet_conv3d(images,
@@ -30,8 +53,14 @@ def feature_extractor_resnet_conv3d(images,
                                     batch_norm_decay = 0.997,
                                     is_training = True):
     from tensorflow.contrib.slim.python.slim.nets import resnet_v2
+
+    resnet_arg_scope = resnet_v2.resnet_arg_scope(weight_decay=weight_decay,
+                                                  batch_norm_decay=batch_norm_decay)
+    # batch size is small so we use batch renormalization
+    batch_norm_key = filter(lambda x: 'batch_norm' in x, resnet_arg_scope.keys())[0]
+    resnet_arg_scope[batch_norm_key]['renorm'] = True
     
-    with slim.arg_scope(resnet_v2.resnet_arg_scope(weight_decay=weight_decay, batch_norm_decay=batch_norm_decay)):
+    with slim.arg_scope(resnet_arg_scope):
         blocks = [
             resnet_v2.resnet_v2_block('block1', base_depth=16, num_units=3, stride=2),
             resnet_v2.resnet_v2_block('block2', base_depth=32, num_units=4, stride=2),
@@ -41,19 +70,21 @@ def feature_extractor_resnet_conv3d(images,
         _, end_points = resnet_v2.resnet_v2(images, blocks,
                                             is_training=is_training,
                                             include_root_block=False)
-    with slim.arg_scope([slim.conv3d], stride=1, padding='SAME',
-                        activation_fn=tf.nn.relu, normalizer_fn=slim.batch_norm):
-        with slim.arg_scope([slim.batch_norm], is_training=is_training):
-            net = tf.expand_dims(end_points['resnet_v2/block3'], 0)
-            net = slim.conv3d(net, dim, [3,3,3])
-            net = slim.conv3d(net, dim, [3,3,3])
-            net = slim.conv3d(net, dim, [3,3,3])
-            net = slim.conv3d(net, dim, [3,3,3])[0]
 
-            # the last layer without activation function
-            feature_map = slim.conv2d(net, dim, [1,1],
-                                      activation_fn=None,
-                                      normalizer_fn=None)
+    arg_scope = convert_resnet_arg_scope_to_slim(resnet_arg_scope)
+    arg_scope[slim.conv3d].update({'stride': 1, 'padding'='SAME'})
+    arg_scope[slim.batch_norm]['is_training'] = is_training
+    with slim.arg_scope(arg_scope):
+        net = tf.expand_dims(end_points['resnet_v2/block3'], 0)
+        net = slim.conv3d(net, dim, [3,3,3])
+        net = slim.conv3d(net, dim, [3,3,3])
+        net = slim.conv3d(net, dim, [3,3,3])
+        net = slim.conv3d(net, dim, [3,3,3])[0]
+
+        # the last layer without activation function
+        feature_map = slim.conv2d(net, dim, [1,1],
+                                  activation_fn=None,
+                                  normalizer_fn=None)
     return feature_map
 
 def colorizer(ref_features, ref_labels, target_features, target_labels=None):
