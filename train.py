@@ -20,7 +20,7 @@ BATCH_RENORM_DECAY = 0.99
 _t = tf.cast(global_step, tf.float32)
 BATCH_RENORM_RMAX = tf.train.piecewise_constant(global_step,
                                                 [5000, 5000+35000],
-                                                [0., (_t-5000.)*(3./35000.), 3.]) # 1. -> 3.
+                                                [1., (_t-5000.)*(2./35000.)+1., 3.]) # 1. -> 3.
 BATCH_RENORM_DMAX = tf.train.piecewise_constant(global_step,
                                                 [5000, 5000+20000],
                                                 [0., (_t-5000.)*(5./20000.), 5.]) # 0. -> 5.
