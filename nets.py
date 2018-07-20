@@ -20,7 +20,10 @@ def feature_extractor_resnet(images,
                              layer = 'resnet_v1_101/block2/unit_3/bottleneck_v1',
                              dim = 256,
                              weight_decay = 0.0001,
-                             batch_norm_decay = 0.997,
+                             batch_norm_decay = 0.999,
+                             batch_renorm_decay = 0.99,
+                             batch_renorm_rmax = 3.,
+                             batch_renorm_dmax = 5.,
                              is_training = True):
     from tensorflow.contrib.slim.python.slim.nets import resnet_v1
 
@@ -28,7 +31,11 @@ def feature_extractor_resnet(images,
                                                   batch_norm_decay=batch_norm_decay)
     # batch size is small so we use batch renormalization
     batch_norm_key = filter(lambda x: 'batch_norm' in x, resnet_arg_scope.keys())[0]
-    resnet_arg_scope[batch_norm_key]['renorm'] = True
+    resnet_arg_scope[batch_norm_key].update({'renorm': True,
+                                             'renorm_decay': batch_renorm_decay,
+                                             'renorm_clipping': {'rmin': 1./batch_renorm_rmax,
+                                                                 'rmax': batch_renorm_rmax,
+                                                                 'dmax': batch_renorm_dmax}})
     
     with slim.arg_scope(resnet_arg_scope):
         _, end_points = resnet_v1.resnet_v1_101(images, 1000, is_training=is_training)
@@ -50,7 +57,10 @@ def feature_extractor_resnet(images,
 def feature_extractor_resnet_conv3d(images,
                                     dim = 256,
                                     weight_decay = 0.0001,
-                                    batch_norm_decay = 0.997,
+                                    batch_norm_decay = 0.999,
+                                    batch_renorm_decay = 0.99,
+                                    batch_renorm_rmax = 3.,
+                                    batch_renorm_dmax = 5.,
                                     is_training = True):
     from tensorflow.contrib.slim.python.slim.nets import resnet_v2
 
@@ -58,7 +68,11 @@ def feature_extractor_resnet_conv3d(images,
                                                   batch_norm_decay=batch_norm_decay)
     # batch size is small so we use batch renormalization
     batch_norm_key = filter(lambda x: 'batch_norm' in x, resnet_arg_scope.keys())[0]
-    resnet_arg_scope[batch_norm_key]['renorm'] = True
+    resnet_arg_scope[batch_norm_key].update({'renorm': True,
+                                             'renorm_decay': batch_renorm_decay,
+                                             'renorm_clipping': {'rmin': 1./batch_renorm_rmax,
+                                                                 'rmax': batch_renorm_rmax,
+                                                                 'dmax': batch_renorm_dmax}})
     
     with slim.arg_scope(resnet_arg_scope):
         blocks = [

@@ -6,14 +6,24 @@ from nets import colorizer
 from dataset import create_ref_target_generator
 from clustering import Clustering, visualize_ab_clusters
 
+global_step = tf.Variable(0, trainable=False)
+
 NUM_REF = 3
 NUM_TARGET = 1
 NUM_CLUSTERS = 16
 KMEANS_STEPS_PER_ITERATION = 100
 FEATURE_DIM = 128
-LEARNING_RATE = 0.00001
+LEARNING_RATE = 0.0001
 WEIGHT_DECAY = 0.0001
-BATCH_NORM_DECAY = 0.95
+BATCH_NORM_DECAY = 0.999
+BATCH_RENORM_DECAY = 0.99
+_t = tf.cast(global_step, tf.float32)
+BATCH_RENORM_RMAX = tf.train.piecewise_constant(global_step,
+                                                [5000, 5000+35000],
+                                                [0., (_t-5000.)*(3./35000.), 3.]) # 1. -> 3.
+BATCH_RENORM_DMAX = tf.train.piecewise_constant(global_step,
+                                                [5000, 5000+20000],
+                                                [0., (_t-5000.)*(5./20000.), 5.]) # 0. -> 5.
 MODEL_DIR = os.path.join(os.path.dirname(__file__), 'data', 'model')
 if not os.path.exists(MODEL_DIR):
     os.mkdir(MODEL_DIR)
@@ -34,7 +44,13 @@ labels = kmeans.lab_to_labels(labels, name='labels')
 is_training = tf.placeholder_with_default(False, [], name='is_training')
 
 ##### extract features from gray scale image (only L channel) using CNN
-feature_map = feature_extractor(images[:,:,:,0:1], dim=FEATURE_DIM, weight_decay=WEIGHT_DECAY, batch_norm_decay=BATCH_NORM_DECAY,
+feature_map = feature_extractor(images[:,:,:,0:1],
+                                dim = FEATURE_DIM,
+                                weight_decay = WEIGHT_DECAY,
+                                batch_norm_decay = BATCH_NORM_DECAY,
+                                batch_renorm_decay = BATCH_RENORM_DECAY,
+                                batch_renorm_rmax = BATCH_RENORM_RMAX,
+                                batch_renorm_dmax = BATCH_RENORM_DMAX,
                                 is_training = is_training)
 # rename with tf.identity so that it can be easily fetched/fed at sess.run
 feature_map = tf.identity(feature_map, name='features')
@@ -45,7 +61,6 @@ end_points = colorizer(feature_map[:NUM_REF], tf.one_hot(labels[:NUM_REF], NUM_C
 prediction = tf.identity(end_points['predictions'], name='predictions')
 prediction_lab = kmeans.labels_to_lab(prediction)
 loss = tf.reduce_mean(end_points['losses'])
-global_step = tf.Variable(0, trainable=False)
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 with tf.control_dependencies(update_ops):
     train_op = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(loss, global_step=global_step)
