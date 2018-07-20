@@ -110,6 +110,8 @@ with tf.control_dependencies(update_ops):
 
 ##### summaries
 loss_summary = tf.summary.scalar('loss', loss)
+history_weights_summary = tf.summary.histogram('history_weights', history._weights)
+loss_summary = tf.summary.merge([loss_summary, history_weights_summary])
 ph_target_img = tf.placeholder(tf.float32, shape=[None,None,None,3])
 ph_vis_pred = tf.placeholder(tf.float32, shape=[None,None,None,3])
 ph_vis_feat = tf.placeholder(tf.float32, shape=[None,None,None,3])
