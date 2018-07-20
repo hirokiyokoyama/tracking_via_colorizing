@@ -98,8 +98,12 @@ predictions = tf.identity(predictions, name='predictions')
 loss = tf.reduce_mean(losses)
 
 ##### update history
+def _update_weight_body(i):
+    op = history.update_weight(batch_inds[i], tf.reduce_mean(losses[i]))
+    with tf.control_dependencies([op]):
+        return i+1
 update_weight_op = tf.while_loop(lambda i: tf.less(i, BATCH_SIZE),
-                                 lambda i: history.update_weight(batch_inds[i], tf.reduce_mean(losses[i])),
+                                 _update_weight_body,
                                  [tf.constant(0)])
 tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, update_weight_op)
 
