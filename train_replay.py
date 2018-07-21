@@ -103,14 +103,9 @@ with tf.control_dependencies(update_ops):
     train_op = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(loss, global_step=global_step)
 
 ##### update history
-def _update_weight_body(i):
-    op = history.update_weight(batch_inds[i], tf.reduce_mean(losses[i]))
-    with tf.control_dependencies([op]):
-        return i+1
+weights = tf.reduce_mean(tf.reshape(losses, [BATCH_SIZE,-1]), -1)
 with tf.control_dependencies([train_op]):
-    train_op = tf.while_loop(lambda i: tf.less(i, BATCH_SIZE),
-                             _update_weight_body,
-                             [tf.constant(0)])
+    train_op = history.update_weights(batch_inds, weights)
 
 ##### summaries
 loss_summary = tf.summary.scalar('loss', loss)
