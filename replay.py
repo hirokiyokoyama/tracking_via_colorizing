@@ -108,5 +108,5 @@ class PrioritizedHistory:
     def sample(self, size):
         with tf.device(self._device):
             inds = stratified_sample(self._weights[:self._size], size)
-            inds = tf.gather(self._inds, inds)
-            return inds, {name: tf.gather(hist, inds) for name, hist in self._histories.iteritems()}
+            _inds = tf.gather(self._inds, inds)
+            return inds, {name: tf.gather(hist, _inds) for name, hist in self._histories.iteritems()}
