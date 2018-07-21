@@ -160,7 +160,8 @@ while True:
             _, summary = sess.run([kmeans.train_op, kmeans_summary])
             writer.add_summary(summary, j)
         if j % 100 != 0:
-            _, summary = sess.run([train_op, loss_summary], {is_training: True})
+            inds, _, summary = sess.run([batch_inds, train_op, loss_summary], {is_training: True})
+            print 'Selected indices:', inds
             # summarize only loss
             writer.add_summary(summary, j)
         else:
