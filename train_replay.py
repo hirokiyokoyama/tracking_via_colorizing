@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import os
-from nets import feature_extractor_resnet_conv3d as feature_extractor
+from nets import feature_extractor_resnet as feature_extractor
 from nets import colorizer
 from dataset import create_ref_target_generator
 from clustering import Clustering, visualize_ab_clusters
@@ -13,7 +13,8 @@ global_step = tf.Variable(0, trainable=False)
 NUM_REF = 3
 NUM_TARGET = 1
 NUM_CLUSTERS = 16
-KMEANS_STEPS_PER_ITERATION = 20
+KMEANS_STEPS_PER_ITERATION = tf.train.piecewise_constant(
+    global_step, [1000, 5000], [10, 50, 200])
 FEATURE_DIM = 128
 LEARNING_RATE = 0.00001
 INITIAL_WEIGHT = 3.
@@ -26,13 +27,12 @@ MIN_HISTORY_SIZE = 300
 WEIGHT_DECAY = 0.0001
 BATCH_NORM_DECAY = 0.999
 BATCH_RENORM_DECAY = 0.99
+USE_CONV3D = False
 _t = tf.cast(global_step, tf.float32)
-BATCH_RENORM_RMAX = tf.train.piecewise_constant(global_step,
-                                                [5000, 5000+35000],
-                                                [1., (_t-5000.)*(2./35000.)+1., 3.]) # 1. -> 3.
-BATCH_RENORM_DMAX = tf.train.piecewise_constant(global_step,
-                                                [5000, 5000+20000],
-                                                [0., (_t-5000.)*(5./20000.), 5.]) # 0. -> 5.
+BATCH_RENORM_RMAX = tf.train.piecewise_constant(
+    global_step, [5000, 5000+35000], [1., (_t-5000.)*(2./35000.)+1., 3.]) # 1. -> 3.
+BATCH_RENORM_DMAX = tf.train.piecewise_constant(
+    global_step, [5000, 5000+20000], [0., (_t-5000.)*(5./20000.), 5.]) # 0. -> 5.
 MODEL_DIR = os.path.join(os.path.dirname(__file__), 'data', 'model')
 if not os.path.exists(MODEL_DIR):
     os.mkdir(MODEL_DIR)
@@ -49,7 +49,7 @@ history = PrioritizedHistory({'images': (images.get_shape().as_list(), tf.float3
                              device='/cpu:0')
 append_op = history.append({'images': images}, INITIAL_WEIGHT)
 batch_inds, batch_data = history.sample(BATCH_SIZE)
-image_batch = tf.identity(batch_data['images'], name='image_batch') #[N,NUM_REF+NUM_TARGET,H,W,C]
+image_batch = tf.identity(batch_data['images'], name='images') #[N,NUM_REF+NUM_TARGET,H,W,C]
 
 ##### color clustering
 kmeans = Clustering(tf.reshape(image_batch[:,:,:,:,1:], [-1,2]), NUM_CLUSTERS,
@@ -61,15 +61,21 @@ labels = tf.reshape(labels, [BATCH_SIZE,NUM_REF+NUM_TARGET]+FEATURE_MAP_SIZE,
                     name='labels')
 
 ##### extract features from gray scale image (only L channel) using CNN
+if USE_CONV3D:
+    inputs = image_batch[:,:,:,:,0:1]
+else:
+    inputs = image_batch_flat[:,:,:,0:1]
 is_training = tf.placeholder_with_default(False, [], name='is_training')
-feature_map = feature_extractor(image_batch_flat[:,:,:,0:1],
+feature_map = feature_extractor(inputs,
                                 dim = FEATURE_DIM,
                                 weight_decay = WEIGHT_DECAY,
                                 batch_norm_decay = BATCH_NORM_DECAY,
-                                is_training = is_training)
+                                is_training = is_training,
+                                use_conv3d = USE_CONV3D)
+if not USE_CONV3D:
+    feature_map = tf.reshape(feature_map, [BATCH_SIZE,NUM_REF+NUM_TARGET]+FEATURE_MAP_SIZE+[FEATURE_DIM])
 # rename with tf.identity so that it can be easily fetched/fed at sess.run
-feature_map = tf.reshape(feature_map, [BATCH_SIZE,NUM_REF+NUM_TARGET]+FEATURE_MAP_SIZE+[FEATURE_DIM],
-                         name='features')
+feature_map = tf.identity(feature_map, name='features')
 
 ##### predict the color (or other category) on the basis of the features
 def loop_body(i, losses, predictions, predictions_lab):
