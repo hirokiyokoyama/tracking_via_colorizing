@@ -52,7 +52,7 @@ def feature_extractor_resnet(images,
         _, end_points = resnet_v2.resnet_v2(images, blocks,
                                             is_training=is_training,
                                             include_root_block=False)
-    net = tf.expand_dims(end_points['resnet_v2/block4'], 0)
+    net = end_points['resnet_v2/block4']
     if use_conv3d:
         # [N*T,H',W',C'] -> [N,T,H',W',C']
         net = tf.reshape(net, tf.concat([orig_shape[:2], tf.shape(net)[1:]], 0))
@@ -67,7 +67,7 @@ def feature_extractor_resnet(images,
             net = slim.conv3d(net, 256, [1,1,1])
             net = slim.conv3d(net, 512, [3,3,3])
             # the last layer without activation function
-            feature_map = slim.conv3d(net, dim, [1,1],
+            feature_map = slim.conv3d(net, dim, [1,1,1],
                                       activation_fn=None,
                                       normalizer_fn=None)
         else:

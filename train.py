@@ -11,8 +11,7 @@ global_step = tf.Variable(0, trainable=False)
 NUM_REF = 3
 NUM_TARGET = 1
 NUM_CLUSTERS = 16
-KMEANS_STEPS_PER_ITERATION = tf.train.piecewise_constant(
-    global_step, [1000, 5000], [10, 50, 200])
+KMEANS_STEPS_PER_ITERATION = 100
 FEATURE_DIM = 128
 LEARNING_RATE = 0.00001
 WEIGHT_DECAY = 0.0001
@@ -118,7 +117,7 @@ while True:
         # summarize only loss
         writer.add_summary(summary, i)
     else:
-        img, feat, pred, _, summary = sess.run([images,
+        img, feat, pred, _, summary = sess.run([image_batch,
                                                 feature_map,
                                                 prediction_lab,
                                                 train_op,
@@ -127,15 +126,15 @@ while True:
         writer.add_summary(summary, i)
 
         # and images (doing some stuff to visualize outside the tf session)
-        target_img = cv2.cvtColor(img[NUM_REF], cv2.COLOR_LAB2RGB)
-        vis_pred = np.dstack([img[NUM_REF,:,:,0:1], cv2.resize(pred[0,:,:,1:], (img.shape[2],img.shape[1]))])
+        target_img = cv2.cvtColor(img[0,NUM_REF], cv2.COLOR_LAB2RGB)
+        vis_pred = np.dstack([img[0,NUM_REF,:,:,0:1], cv2.resize(pred[0,:,:,1:], tuple(IMAGE_SIZE[::-1]))])
         vis_pred = cv2.cvtColor(vis_pred, cv2.COLOR_LAB2RGB)
-        feat_flat = feat[NUM_REF].reshape(-1, feat.shape[-1])
+        feat_flat = feat[0,NUM_REF].reshape(-1, FEATURE_DIM)
         pca.fit(feat_flat)
         feat_flat = pca.transform(feat_flat)
         feat_flat /= np.abs(feat_flat).max()
         feat_flat = (feat_flat + 1) / 2
-        vis_feat = feat_flat.reshape(feat.shape[1:3]+(3,))
+        vis_feat = feat_flat.reshape(FEATURE_MAP_SIZE+[3])
         summary = sess.run(image_summary, {ph_target_img: [target_img],
                                            ph_vis_pred: [vis_pred],
                                            ph_vis_feat: [vis_feat]})

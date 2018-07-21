@@ -13,8 +13,7 @@ global_step = tf.Variable(0, trainable=False)
 NUM_REF = 3
 NUM_TARGET = 1
 NUM_CLUSTERS = 16
-KMEANS_STEPS_PER_ITERATION = tf.train.piecewise_constant(
-    global_step, [1000, 5000], [10, 50, 200])
+KMEANS_STEPS_PER_ITERATION = 100
 FEATURE_DIM = 128
 LEARNING_RATE = 0.00001
 INITIAL_WEIGHT = 3.
