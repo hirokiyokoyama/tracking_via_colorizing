@@ -97,20 +97,20 @@ _, losses, predictions, predictions_lab = tf.while_loop(loop_cond, loop_body, lo
 predictions = tf.identity(predictions, name='predictions')
 loss = tf.reduce_mean(losses)
 
+##### training
+update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+with tf.control_dependencies(update_ops):
+    train_op = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(loss, global_step=global_step)
+
 ##### update history
 def _update_weight_body(i):
     op = history.update_weight(batch_inds[i], tf.reduce_mean(losses[i]))
     with tf.control_dependencies([op]):
         return i+1
-update_weight_op = tf.while_loop(lambda i: tf.less(i, BATCH_SIZE),
-                                 _update_weight_body,
-                                 [tf.constant(0)])
-tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, update_weight_op)
-
-##### training
-update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-with tf.control_dependencies(update_ops):
-    train_op = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(loss, global_step=global_step)
+with tf.control_dependencies([train_op]):
+    train_op = tf.while_loop(lambda i: tf.less(i, BATCH_SIZE),
+                             _update_weight_body,
+                             [tf.constant(0)])
 
 ##### summaries
 loss_summary = tf.summary.scalar('loss', loss)
