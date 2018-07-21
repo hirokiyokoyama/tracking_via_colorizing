@@ -49,6 +49,7 @@ history = PrioritizedHistory({'images': (images.get_shape().as_list(), tf.float3
 append_op = history.append({'images': images}, INITIAL_WEIGHT)
 batch_inds, batch_data = history.sample(BATCH_SIZE)
 image_batch = tf.identity(batch_data['images'], name='images') #[N,NUM_REF+NUM_TARGET,H,W,C]
+image_batch.set_shape([None]+image_batch.get_shape().as_list()[1:])
 
 ##### color clustering
 kmeans = Clustering(tf.reshape(image_batch[:,:,:,:,1:], [-1,2]), NUM_CLUSTERS,

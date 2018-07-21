@@ -71,7 +71,8 @@ feature_map = tf.identity(feature_map, name='features')
 ##### predict the color (or other category) on the basis of the features
 end_points = colorizer(feature_map[0,:NUM_REF], tf.one_hot(labels[0,:NUM_REF], NUM_CLUSTERS),
                        feature_map[0,NUM_REF:], labels[0,NUM_REF:])
-prediction = tf.identity(end_points['predictions'], name='predictions')
+prediction = end_points['predictions']
+tf.expand_dims(prediction, 0, name='predictions')
 prediction_lab = kmeans.labels_to_lab(prediction)
 loss = tf.reduce_mean(end_points['losses'])
 

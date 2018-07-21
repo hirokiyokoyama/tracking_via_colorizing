@@ -85,7 +85,7 @@ if __name__=='__main__':
         features = graph.get_tensor_by_name('features:0')
         annotations = tf.placeholder(tf.float32, shape=[3,32,32,n_colors])
         
-        end_points = colorizer(features[0:3], annotations, features[3:4])
+        end_points = colorizer(features[0,0:3], annotations, features[0,3:4])
         predictions = end_points['predictions']
         temperature = end_points['temperature']
 
@@ -99,7 +99,7 @@ if __name__=='__main__':
         _annotations = np.expand_dims(annotation, 0).repeat(3, 0)
         for t in xrange(1, all_images.shape[0]):
             _images = all_images_gray[[max(t-3,0),max(t-2,0),t-1,t]]
-            _predictions = sess.run(predictions, {images: _images,
+            _predictions = sess.run(predictions, {images: [_images],
                                                   annotations: _annotations,
                                                   temperature: 0.5,
                                                   'is_training:0': False})
