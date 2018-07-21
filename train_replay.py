@@ -164,11 +164,13 @@ while True:
             # summarize only loss
             writer.add_summary(summary, j)
         else:
-            imgs, feats, preds, _, summary = sess.run([image_batch,
-                                                       feature_map,
-                                                       predictions_lab,
-                                                       train_op,
-                                                       loss_summary], {is_training: True})
+            imgs, inds, feats, preds, _, summary = sess.run([image_batch,
+                                                             batch_inds,
+                                                             feature_map,
+                                                             predictions_lab,
+                                                             train_op,
+                                                             loss_summary], {is_training: True})
+            print 'Selected indices:', inds
             # summarize loss
             writer.add_summary(summary, j)
 
