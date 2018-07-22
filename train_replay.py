@@ -57,7 +57,7 @@ kmeans = Clustering(tf.reshape(image_batch[:,:,:,:,1:], [-1,2]), NUM_CLUSTERS,
 image_batch_flat = tf.reshape(image_batch, [-1]+IMAGE_SIZE+[3])
 labels = tf.image.resize_images(image_batch_flat, FEATURE_MAP_SIZE)
 labels = kmeans.lab_to_labels(labels)
-labels = tf.reshape(labels, [BATCH_SIZE,NUM_REF+NUM_TARGET]+FEATURE_MAP_SIZE)
+labels = tf.reshape(labels, [-1,NUM_REF+NUM_TARGET]+FEATURE_MAP_SIZE)
 labels = tf.placeholder_with_default(
     labels, [None, NUM_REF+NUM_TARGET]+FEATURE_MAP_SIZE, name='labels')
 
@@ -78,7 +78,7 @@ feature_map = feature_extractor(inputs,
                                 use_conv3d = USE_CONV3D)
 if not USE_CONV3D:
     feature_map = tf.reshape(
-        feature_map, [BATCH_SIZE,NUM_REF+NUM_TARGET]+FEATURE_MAP_SIZE+[FEATURE_DIM])
+        feature_map, [-1,NUM_REF+NUM_TARGET]+FEATURE_MAP_SIZE+[FEATURE_DIM])
 # rename with tf.identity so that it can be easily fetched/fed at sess.run
 feature_map = tf.identity(feature_map, name='features')
 
@@ -114,7 +114,7 @@ with tf.control_dependencies(update_ops):
     train_op = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(loss, global_step=global_step)
 
 ##### update history
-weights = tf.reduce_mean(tf.reshape(losses, [BATCH_SIZE,-1]), -1)
+weights = tf.reduce_mean(tf.layers.flatten(losses), -1)
 with tf.control_dependencies([train_op]):
     train_op = history.update_weights(batch_inds, weights)
 
