@@ -29,9 +29,9 @@ BATCH_RENORM_DECAY = 0.99
 USE_CONV3D = False
 _t = tf.cast(global_step, tf.float32)
 BATCH_RENORM_RMAX = tf.train.piecewise_constant(
-    global_step, [5000, 5000+35000], [1., (_t-5000.)*(2./35000.)+1., 3.]) # 1. -> 3.
+    global_step, [2000, 2000+35000], [1., (_t-2000.)*(2./35000.)+1., 3.]) # 1. -> 3.
 BATCH_RENORM_DMAX = tf.train.piecewise_constant(
-    global_step, [5000, 5000+20000], [0., (_t-5000.)*(5./20000.), 5.]) # 0. -> 5.
+    global_step, [2000, 2000+20000], [0., (_t-2000.)*(5./20000.), 5.]) # 0. -> 5.
 MODEL_DIR = os.path.join(os.path.dirname(__file__), 'data', 'model')
 if not os.path.exists(MODEL_DIR):
     os.mkdir(MODEL_DIR)
@@ -48,8 +48,8 @@ history = PrioritizedHistory({'images': (images.get_shape().as_list(), tf.float3
                              device='/cpu:0')
 append_op = history.append({'images': images}, INITIAL_WEIGHT)
 batch_inds, batch_data = history.sample(BATCH_SIZE)
-image_batch = tf.identity(batch_data['images'], name='images') #[N,NUM_REF+NUM_TARGET,H,W,C]
-image_batch.set_shape([None]+image_batch.get_shape().as_list()[1:])
+image_batch = tf.placeholder_with_default(
+    batch_data['images'], [None, NUM_REF+NUM_TARGET]+IMAGE_SIZE+[3], name='images')
 
 ##### color clustering
 kmeans = Clustering(tf.reshape(image_batch[:,:,:,:,1:], [-1,2]), NUM_CLUSTERS,
@@ -57,8 +57,9 @@ kmeans = Clustering(tf.reshape(image_batch[:,:,:,:,1:], [-1,2]), NUM_CLUSTERS,
 image_batch_flat = tf.reshape(image_batch, [-1]+IMAGE_SIZE+[3])
 labels = tf.image.resize_images(image_batch_flat, FEATURE_MAP_SIZE)
 labels = kmeans.lab_to_labels(labels)
-labels = tf.reshape(labels, [BATCH_SIZE,NUM_REF+NUM_TARGET]+FEATURE_MAP_SIZE,
-                    name='labels')
+labels = tf.reshape(labels, [BATCH_SIZE,NUM_REF+NUM_TARGET]+FEATURE_MAP_SIZE)
+labels = tf.placeholder_with_default(
+    labels, [None, NUM_REF+NUM_TARGET]+FEATURE_MAP_SIZE, name='labels')
 
 ##### extract features from gray scale image (only L channel) using CNN
 if USE_CONV3D:
@@ -70,10 +71,14 @@ feature_map = feature_extractor(inputs,
                                 dim = FEATURE_DIM,
                                 weight_decay = WEIGHT_DECAY,
                                 batch_norm_decay = BATCH_NORM_DECAY,
+                                batch_renorm_decay = BATCH_RENORM_DECAY,
+                                batch_renorm_rmax = BATCH_RENORM_RMAX,
+                                batch_renorm_dmax = BATCH_RENORM_DMAX,
                                 is_training = is_training,
                                 use_conv3d = USE_CONV3D)
 if not USE_CONV3D:
-    feature_map = tf.reshape(feature_map, [BATCH_SIZE,NUM_REF+NUM_TARGET]+FEATURE_MAP_SIZE+[FEATURE_DIM])
+    feature_map = tf.reshape(
+        feature_map, [BATCH_SIZE,NUM_REF+NUM_TARGET]+FEATURE_MAP_SIZE+[FEATURE_DIM])
 # rename with tf.identity so that it can be easily fetched/fed at sess.run
 feature_map = tf.identity(feature_map, name='features')
 

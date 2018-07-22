@@ -22,9 +22,9 @@ FEATURE_MAP_SIZE = [32,32] # IMAGE_SIZE/8 (depends on CNN)
 USE_CONV3D = False
 _t = tf.cast(global_step, tf.float32)
 BATCH_RENORM_RMAX = tf.train.piecewise_constant(
-    global_step, [5000, 5000+35000], [1., (_t-5000.)*(2./35000.)+1., 3.]) # 1. -> 3.
+    global_step, [2000, 2000+35000], [1., (_t-5000.)*(2./35000.)+1., 3.]) # 1. -> 3.
 BATCH_RENORM_DMAX = tf.train.piecewise_constant(
-    global_step, [5000, 5000+20000], [0., (_t-5000.)*(5./20000.), 5.]) # 0. -> 5.
+    global_step, [2000, 2000+20000], [0., (_t-5000.)*(5./20000.), 5.]) # 0. -> 5.
 MODEL_DIR = os.path.join(os.path.dirname(__file__), 'data', 'model')
 if not os.path.exists(MODEL_DIR):
     os.mkdir(MODEL_DIR)
@@ -35,7 +35,9 @@ data = create_ref_target_generator(NUM_REF, NUM_TARGET).repeat().map(lambda x,y:
 raw_images = data.make_one_shot_iterator().get_next()
 # Lab image, [N,256,256,3], can be fed at sess.run
 images = tf.image.resize_images(raw_images, IMAGE_SIZE)
-image_batch = tf.expand_dims(images, 0, name='images')
+image_batch = tf.expand_dims(images, 0)
+image_batch = tf.placeholder_with_default(
+    batch_data['images'], [None, NUM_REF+NUM_TARGET]+IMAGE_SIZE+[3], name='images')
 
 ##### color clustering
 kmeans = Clustering(tf.reshape(image_batch[:,:,:,:,1:], [-1,2]), NUM_CLUSTERS,
@@ -44,14 +46,15 @@ image_batch_flat = tf.reshape(image_batch, [-1]+IMAGE_SIZE+[3])
 # color labels (or other categorical data), [N,32,32,d], can be fed at sess.run
 labels = tf.image.resize_images(image_batch_flat, FEATURE_MAP_SIZE)
 labels = kmeans.lab_to_labels(labels)
-labels = tf.reshape(labels, [1,NUM_REF+NUM_TARGET]+FEATURE_MAP_SIZE,
-                    name='labels')
+labels = tf.reshape(labels, [1,NUM_REF+NUM_TARGET]+FEATURE_MAP_SIZE)
+labels = tf.placeholder_with_default(
+    labels, [None, NUM_REF+NUM_TARGET]+FEATURE_MAP_SIZE, name='labels')
 
 ##### extract features from gray scale image (only L channel) using CNN
 if USE_CONV3D:
-    inputs = tf.expand_dims(images[:,:,:,0:1], 0)
+    inputs = image_batch[:,:,:,:,0:1]
 else:
-    inputs = images[:,:,:,0:1]
+    inputs = image_batch_flat[:,:,:,0:1]
 # can be fed at sess.run, False by default
 is_training = tf.placeholder_with_default(False, [], name='is_training')
 feature_map = feature_extractor(inputs,
@@ -64,7 +67,8 @@ feature_map = feature_extractor(inputs,
                                 is_training = is_training,
                                 use_conv3d = USE_CONV3D)
 if not USE_CONV3D:
-    feature_map = tf.expand_dims(feature_map, 0)
+    feature_map = tf.reshape(
+        feature_map, [1,NUM_REF+NUM_TARGET]+FEATURE_MAP_SIZE+[FEATURE_DIM])
 # rename with tf.identity so that it can be easily fetched/fed at sess.run
 feature_map = tf.identity(feature_map, name='features')
 
