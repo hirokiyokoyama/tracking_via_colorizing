@@ -99,7 +99,7 @@ if __name__=='__main__':
         _annotations = np.expand_dims(annotation, 0).repeat(3, 0)
         for t in xrange(1, all_images.shape[0]):
             _images = all_images_gray[[max(t-3,0),max(t-2,0),t-1,t]]
-            _predictions = sess.run(predictions, {images: [_images],
+            _predictions = sess.run(predictions, {images: [_images * 100.], #L values are in [0,100.] in cv2
                                                   annotations: _annotations,
                                                   temperature: 0.5,
                                                   'is_training:0': False})
