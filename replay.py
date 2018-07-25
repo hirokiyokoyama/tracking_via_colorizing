@@ -69,7 +69,7 @@ class PrioritizedHistory:
         if not isinstance(name_to_value, dict):
             name_to_value = {'__singleton__': name_to_value}
         
-        with tf.device(self._device):
+        with tf.device(self._device), tf.name_scope(self._scope):
             weight = tf.convert_to_tensor(weight)
             name_to_value = {name: tf.convert_to_tensor(value) for name, value in name_to_value.iteritems()}
             inds = tf.where(tf.less(self._weights, weight))
@@ -99,7 +99,7 @@ class PrioritizedHistory:
                 return tf.cond(accepted, insert, lambda: -1)
 
     def update_weight(self, ind, weight):
-        with tf.device(self._device):
+        with tf.device(self._device), tf.name_scope(self._scope):
             ind = tf.convert_to_tensor(ind)
             if self._print_messages:
                 ind = tf.Print(ind, [ind], message='Updated entry: ')
@@ -136,7 +136,7 @@ class PrioritizedHistory:
                     return tf.identity(new_ind)
     
     def update_weights(self, inds, weights):
-        with tf.device(self._device):
+        with tf.device(self._device), tf.name_scope(self._scope):
             inds = tf.convert_to_tensor(inds)
             if self._print_messages:
                 inds = tf.Print(inds, [inds], message='Updated entries: ')
@@ -151,7 +151,7 @@ class PrioritizedHistory:
             return tf.group(ops)
     
     def sample(self, size):
-        with tf.device(self._device):
+        with tf.device(self._device), tf.name_scope(self._scope):
             inds = stratified_sample(self._weights[:self._size], size)
             if self._print_messages:
                 inds = tf.Print(inds, [inds], message='Sampled entries: ')
