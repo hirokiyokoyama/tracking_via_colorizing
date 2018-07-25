@@ -13,7 +13,11 @@ For details, see https://ai.googleblog.com/2018/06/self-supervised-tracking-via-
 ### Training
 1. python dataset.py (this downloads [kinetics](https://deepmind.com/research/open-source/open-source-datasets/kinetics/) dataset and associated videos from youtube, which takes long time)
 1. ~~python clustering.py (clusters colors that appear in the videos using kmeans)~~(currently color clusters are updated while training)
-1. python train.py
+1. python train.py        (using mini-batch of size 1 containing 3 reference frames and 1 target frame, witch means size 4 for the feature extratror CNN)
+
+   or
+
+   python train_replay.py (using mini-batch of size 8 (32 for the CNN, can be configured) and replay memory prioritized on the basis of the loss value)
 
 Step 1 lasts almost forever! You can go to step 2 and 3 while running dataset.py. Missing videos will be ignored.
 To watch the progress of training, run the following command and browse http://\<its IP address\>:6006.
