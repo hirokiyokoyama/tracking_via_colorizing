@@ -23,32 +23,43 @@ class PrioritizedHistory:
                  capacity = 100000,
                  device = '/gpu:0',
                  variable_collections = ['history'],
+                 scope = 'history',
                  print_messages = False):
         variables = []
         self._capacity = capacity
         self._device = device
+        self._scope = scope
         self._print_messages = print_messages
 
         if not isinstance(name_to_shape_dtype, dict):
             name_to_shape_dtype = {'__singleton__': name_to_shape_dtype}
         
-        with tf.device(self._device):
+        with tf.device(self._device), tf.name_scope(self._scope):
             self._histories = {}
-            for name, (shape, dtype) in name_to_shape_dtype.iteritems():
-                self._histories[name] = tf.Variable(tf.zeros([capacity]+list(shape), dtype=dtype),
-                                                trainable = False, collections=variable_collections)
-                variables.append(self._histories[name])
+            with tf.name_scope('data'):
+                for name, (shape, dtype) in name_to_shape_dtype.iteritems():
+                    self._histories[name] = tf.Variable(tf.zeros([capacity]+list(shape), dtype=dtype),
+                                                        trainable = False,
+                                                        collections = variable_collections,
+                                                        name = name)
+                    variables.append(self._histories[name])
         
             self._weights = tf.Variable(tf.zeros([capacity], dtype=tf.float32),
-                                        trainable = False, collections=variable_collections)
+                                        trainable = False,
+                                        collections = variable_collections,
+                                        name = 'weights')
             variables.append(self._weights)
 
             self._inds = tf.Variable(tf.range(capacity),
-                                     trainable = False, collections=variable_collections)
+                                     trainable = False,
+                                     collections = variable_collections,
+                                     name = 'indices')
             variables.append(self._inds)
             
             self._size = tf.Variable(tf.constant(0, dtype=tf.int32),
-                                     trainable = False, collections=variable_collections)
+                                     trainable = False,
+                                     collections = variable_collections,
+                                     name = 'size')
             variables.append(self._size)
         
             self.saver = tf.train.Saver(var_list=variables)

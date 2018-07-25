@@ -56,6 +56,7 @@ if __name__=='__main__':
     
     if len(sys.argv) > 1:
         model_path = sys.argv[1]
+        graph_path = os.path.splitext(model_path)[0] + '.meta'
     else:
         print 'Usage: %s model_path [davis_image_set]' % sys.argv[0]
         quit()
@@ -79,7 +80,7 @@ if __name__=='__main__':
 
     # load model
     with tf.Graph().as_default() as graph:
-        saver = tf.train.import_meta_graph(model_path+'.meta')
+        saver = tf.train.import_meta_graph(graph_path)
 
         images = graph.get_tensor_by_name('images:0')
         features = graph.get_tensor_by_name('features:0')
