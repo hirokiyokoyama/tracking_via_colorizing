@@ -111,7 +111,9 @@ def _build_graph(image_batch):
     #upper bound of exp(-beta KL[p||q])
     #beta: LOSS_WEIGHTING_SHARPNESS; good approximation when 0.<b<=.5
     #[BATCH_SIZE,NUM_TARGET]
-    loss_weights = tf.reduce_sum(p**(1-LOSS_WEIGHTING_SHARPNESS) * q**LOSS_WEIGHTING_SHARPNESS, -1)
+    loss_weights = tf.reduce_sum(
+        p**(1-LOSS_WEIGHTING_SHARPNESS) * q**LOSS_WEIGHTING_SHARPNESS, -1,
+        name = 'loss_weights')
 
     return kmeans
 
