@@ -7,6 +7,7 @@ from dataset import create_ref_target_generator
 from clustering import Clustering, visualize_ab_clusters
 from replay import PrioritizedHistory
 
+#############################################################
 # If OOM happens, try smaller FEATURE_DIM and/or BATCH_SIZE
 NUM_REF = 3
 NUM_TARGET = 1
@@ -24,15 +25,27 @@ BATCH_RENORM_RMAX = lambda t: tf.train.piecewise_constant(
     t, [2000., 2000.+35000.], [1., (t-2000.)*(2./35000.)+1., 3.]) # 1. -> 3.
 BATCH_RENORM_DMAX = lambda t: tf.train.piecewise_constant(
     t, [2000., 2000.+20000.], [0., (t-2000.)*(5./20000.), 5.]) # 0. -> 5.
+LOSS_WEIGHTING_STRENGTH = 0.5
 MODEL_DIR = os.path.join(os.path.dirname(__file__), 'data', 'model')
 if not os.path.exists(MODEL_DIR):
     os.mkdir(MODEL_DIR)
 
+USE_HISTORY = True # if False, following constants are ignored
 INITIAL_WEIGHT = 3.
 BATCH_SIZE = 8
 TRAIN_INTERVAL = 1
-HISTORY_CAPACITY = 1000
-MIN_HISTORY_SIZE = 300
+HISTORY_CAPACITY = 10000
+MIN_HISTORY_SIZE = 3000
+#############################################################
+
+if not USE_HISTORY:
+    TRAIN_INTERVAL = 1
+    MIN_HISTORY_SIZE = 0
+    BATCH_SIZE = 1
+
+def kl_divergence(p, q, axis=-1):
+    x = p*(tf.log(p)-tf.log(q))
+    return tf.reduce_sum(tf.boolean_mask(x, tf.greater(p,0)), axis)
 
 def _build_graph(image_batch):
     global_step = tf.Variable(0, trainable=False, name='global_step')
@@ -94,6 +107,15 @@ def _build_graph(image_batch):
     predictions_lab = tf.identity(predictions_lab, name='predictions_lab')
     losses = tf.identity(losses, name='losses')
 
+    ##### calculate differences between reference and target images
+    #[BATCH_SIZE,NUM_REF+NUM_TARGET,NUM_CLUSTERS]
+    pq = tf.reduce_mean(tf.reduce_mean(tf.one_hot(labels, NUM_CLUSTERS), 2), 2)
+    q = tf.reduce_mean(pq[:,:NUM_REF,:], 1, keepdims=True)
+    p = pq[:,NUM_REF:,:]
+    #[BATCH_SIZE,NUM_TARGET]
+    consistency = tf.identity(kl_divergence(p, q), name='consistency')
+    loss_weights = tf.exp(-LOSS_WEIGHTING_STRENGTH*consistency)
+
     return kmeans
 
 ##### build a graph to export as a meta graph
@@ -111,12 +133,15 @@ raw_images = data.make_one_shot_iterator().get_next()
 images = tf.image.resize_images(raw_images, IMAGE_SIZE)
 
 ##### create history
-history = PrioritizedHistory({'images': (images.get_shape().as_list(), tf.float32)},
-                             capacity=HISTORY_CAPACITY,
-                             device='/cpu:0')
-append_op = history.append({'images': images}, INITIAL_WEIGHT)
-batch_inds, batch_data = history.sample(BATCH_SIZE)
-image_batch = tf.identity(batch_data['images'], name='images')
+if USE_HISTORY:
+    history = PrioritizedHistory({'images': (images.get_shape().as_list(), tf.float32)},
+                                 capacity=HISTORY_CAPACITY,
+                                 device='/cpu:0')
+    append_op = history.append({'images': images}, INITIAL_WEIGHT)
+    batch_inds, batch_data = history.sample(BATCH_SIZE)
+    image_batch = tf.identity(batch_data['images'], name='images')
+else:
+    image_batch = tf.expand_dims(images, 0, name='images')
 
 ##### training
 kmeans = _build_graph(image_batch)
@@ -127,21 +152,24 @@ is_training = graph.get_tensor_by_name('is_training:0')
 feature_map = graph.get_tensor_by_name('features:0')
 predictions_lab = graph.get_tensor_by_name('predictions_lab:0')
 losses = graph.get_tensor_by_name('losses:0')
-loss = tf.reduce_mean(losses)
+loss_weights = graph.get_tensor_by_name('loss_weights:0')
+loss = tf.reduce_mean(tf.reduce_mean(tf.reduce_mean(losses, -1), -1) * loss_weights)
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 with tf.control_dependencies(update_ops):
     train_op = tf.train.AdamOptimizer(learning_rate = LEARNING_RATE(t))\
     .minimize(loss, global_step = global_step)
 
 ##### update history
-weights = tf.reduce_mean(tf.layers.flatten(losses), -1)
-with tf.control_dependencies([train_op]):
-    train_op = history.update_weights(batch_inds, weights)
+if USE_HISTORY:
+    weights = tf.reduce_mean(tf.layers.flatten(losses), -1)
+    with tf.control_dependencies([train_op]):
+        train_op = history.update_weights(batch_inds, weights)
 
 ##### summaries
 loss_summary = tf.summary.scalar('loss', loss)
-history_weights_summary = tf.summary.histogram('history_weights', history._weights)
-loss_summary = tf.summary.merge([loss_summary, history_weights_summary])
+if USE_HISTORY:
+    history_weights_summary = tf.summary.histogram('history_weights', history._weights)
+    loss_summary = tf.summary.merge([loss_summary, history_weights_summary])
 ph_target_img = tf.placeholder(tf.float32, shape=[None,None,None,3])
 ph_vis_pred = tf.placeholder(tf.float32, shape=[None,None,None,3])
 ph_vis_feat = tf.placeholder(tf.float32, shape=[None,None,None,3])
@@ -157,7 +185,8 @@ saver = tf.train.Saver()
 sess = tf.Session()
 sess.run(tf.global_variables_initializer())
 latest_ckpt = tf.train.latest_checkpoint(MODEL_DIR)
-sess.run(history.initializer)
+if USE_HISTORY:
+    sess.run(history.initializer)
 if latest_ckpt is not None:
     print 'Restoring from %s.' % latest_ckpt
     saver.restore(sess, latest_ckpt)
@@ -173,7 +202,8 @@ pca = PCA(n_components=3)
 
 i = 0
 while True:
-    sess.run(append_op)
+    if USE_HISTORY:
+        sess.run(append_op)
     i += 1
     
     if i >= MIN_HISTORY_SIZE and i % TRAIN_INTERVAL == 0:
