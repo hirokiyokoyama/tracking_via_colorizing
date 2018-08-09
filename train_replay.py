@@ -152,6 +152,7 @@ is_training = graph.get_tensor_by_name('is_training:0')
 feature_map = graph.get_tensor_by_name('features:0')
 predictions_lab = graph.get_tensor_by_name('predictions_lab:0')
 losses = graph.get_tensor_by_name('losses:0')
+consistency = graph.get_tensor_by_name('consistency:0')
 loss_weights = graph.get_tensor_by_name('loss_weights:0')
 loss = tf.reduce_mean(tf.reduce_mean(tf.reduce_mean(losses, -1), -1) * loss_weights)
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -170,6 +171,8 @@ loss_summary = tf.summary.scalar('loss', loss)
 if USE_HISTORY:
     history_weights_summary = tf.summary.histogram('history_weights', history._weights)
     loss_summary = tf.summary.merge([loss_summary, history_weights_summary])
+consistency_summary = tf.summary.histogram('color_consistency', consistency)
+loss_summary = tf.summary.merge([loss_summary, consistency_summary])
 ph_target_img = tf.placeholder(tf.float32, shape=[None,None,None,3])
 ph_vis_pred = tf.placeholder(tf.float32, shape=[None,None,None,3])
 ph_vis_feat = tf.placeholder(tf.float32, shape=[None,None,None,3])
@@ -216,7 +219,7 @@ while True:
             _, summary = sess.run([kmeans.train_op, kmeans_summary])
             writer.add_summary(summary, j)
         if j % 100 != 0:
-            inds, _, summary = sess.run([train_op, loss_summary], {is_training: True})
+            _, summary = sess.run([train_op, loss_summary], {is_training: True})
             # summarize only loss
             writer.add_summary(summary, j)
         else:
