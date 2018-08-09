@@ -43,10 +43,6 @@ if not USE_HISTORY:
     MIN_HISTORY_SIZE = 0
     BATCH_SIZE = 1
 
-def kl_divergence(p, q, axis=-1):
-    x = p*(tf.log(p)-tf.log(q))
-    return tf.reduce_sum(tf.boolean_mask(x, tf.greater(p,0)), axis)
-
 def _build_graph(image_batch):
     global_step = tf.Variable(0, trainable=False, name='global_step')
     t = tf.cast(global_step, tf.float32)
@@ -153,7 +149,6 @@ is_training = graph.get_tensor_by_name('is_training:0')
 feature_map = graph.get_tensor_by_name('features:0')
 predictions_lab = graph.get_tensor_by_name('predictions_lab:0')
 losses = graph.get_tensor_by_name('losses:0')
-consistency = graph.get_tensor_by_name('consistency:0')
 loss_weights = graph.get_tensor_by_name('loss_weights:0')
 loss = tf.reduce_mean(tf.reduce_mean(tf.reduce_mean(losses, -1), -1) * loss_weights)
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
