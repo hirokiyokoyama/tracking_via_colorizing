@@ -112,9 +112,10 @@ def _build_graph(image_batch):
     pq = tf.reduce_mean(tf.reduce_mean(tf.one_hot(labels, NUM_CLUSTERS), 2), 2)
     q = tf.reduce_mean(pq[:,:NUM_REF,:], 1, keepdims=True)
     p = pq[:,NUM_REF:,:]
+    #upper bound of exp(-beta KL[p||q])
+    #beta: LOSS_WEIGHTING_SHARPNESS; good approximation when 0.<b<=.5
     #[BATCH_SIZE,NUM_TARGET]
-    consistency = tf.identity(kl_divergence(p, q), name='consistency')
-    loss_weights = tf.exp(-LOSS_WEIGHTING_STRENGTH*consistency, name='loss_weights')
+    loss_weights = tf.reduce_sum(p**(1-LOSS_WEIGHTING_SHARPNESS) * q**LOSS_WEIGHTING_SHARPNESS, -1)
 
     return kmeans
 
