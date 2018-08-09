@@ -25,7 +25,7 @@ BATCH_RENORM_RMAX = lambda t: tf.train.piecewise_constant(
     t, [2000., 2000.+35000.], [1., (t-2000.)*(2./35000.)+1., 3.]) # 1. -> 3.
 BATCH_RENORM_DMAX = lambda t: tf.train.piecewise_constant(
     t, [2000., 2000.+20000.], [0., (t-2000.)*(5./20000.), 5.]) # 0. -> 5.
-LOSS_WEIGHTING_STRENGTH = 0.5
+LOSS_WEIGHTING_SHARPNESS = 0.5
 MODEL_DIR = os.path.join(os.path.dirname(__file__), 'data', 'model')
 if not os.path.exists(MODEL_DIR):
     os.mkdir(MODEL_DIR)
