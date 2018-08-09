@@ -114,7 +114,7 @@ def _build_graph(image_batch):
     p = pq[:,NUM_REF:,:]
     #[BATCH_SIZE,NUM_TARGET]
     consistency = tf.identity(kl_divergence(p, q), name='consistency')
-    loss_weights = tf.exp(-LOSS_WEIGHTING_STRENGTH*consistency)
+    loss_weights = tf.exp(-LOSS_WEIGHTING_STRENGTH*consistency, name='loss_weights')
 
     return kmeans
 
@@ -216,18 +216,15 @@ while True:
             _, summary = sess.run([kmeans.train_op, kmeans_summary])
             writer.add_summary(summary, j)
         if j % 100 != 0:
-            inds, _, summary = sess.run([batch_inds, train_op, loss_summary], {is_training: True})
-            print 'Selected indices:', inds
+            inds, _, summary = sess.run([train_op, loss_summary], {is_training: True})
             # summarize only loss
             writer.add_summary(summary, j)
         else:
-            imgs, inds, feats, preds, _, summary = sess.run([image_batch,
-                                                             batch_inds,
-                                                             feature_map,
-                                                             predictions_lab,
-                                                             train_op,
-                                                             loss_summary], {is_training: True})
-            print 'Selected indices:', inds
+            imgs, feats, preds, _, summary = sess.run([image_batch,
+                                                       feature_map,
+                                                       predictions_lab,
+                                                       train_op,
+                                                       loss_summary], {is_training: True})
             # summarize loss
             writer.add_summary(summary, j)
 
