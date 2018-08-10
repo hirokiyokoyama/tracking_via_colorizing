@@ -40,10 +40,9 @@ To watch the progress of training, run the following command and browse http://\
 * USE_HISTORY: Whether or not to use prioritized replay buffer.
 * INITIAL_WEIGHT: Initial priority of samples to be added into the replay buffer.
 * BATCH_SIZE: Number of samples to be chosen from the replay buffer.
-* TRAIN_INTERVAL: 
+* TRAIN_INTERVAL: Interval between training steps.
 * HISTORY_CAPACITY: Capacity of the replay buffer.
 * MIN_HISTORY_SIZE: Size of the replay buffer at which the training step begins.
-* HISTORY_DEVICE: Device where variables and operations involving the replay buffer to be placed.
 
 ### Test
 By following command, you can check if the trained model can perform tracking, which is not explicitly trained.
