@@ -77,7 +77,7 @@ def feature_extractor_resnet(images,
                                       normalizer_fn=None)
     return feature_map
 
-def colorizer(ref_features, ref_labels, target_features, target_labels=None):
+def colorizer(ref_features, ref_labels, target_features, target_labels=None, temperature=None):
     # ref_features: [N_REF,H,W,D], feature map from reference frames
     # ref_labels: [N_REF,H,W,d], category probabilities or one-hot vectors from reference frames
     # target_features: [N_TARGET,H,W,D], feature map from target frames
@@ -88,7 +88,8 @@ def colorizer(ref_features, ref_labels, target_features, target_labels=None):
     ref_features = tf.reshape(ref_features, [-1,1,dim])
     target_features = tf.reshape(target_features, [1,-1,dim])
     inner = tf.reduce_sum(ref_features * target_features, -1)
-    temperature = tf.placeholder_with_default(1., [], name='temperature')
+    if temperature is None:
+        temperature = tf.placeholder_with_default(1., [], name='temperature')
     weight_mat = tf.nn.softmax(inner/temperature, 0)
 
     ref_labels = tf.convert_to_tensor(ref_labels)
