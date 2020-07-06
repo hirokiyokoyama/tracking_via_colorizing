@@ -2,6 +2,7 @@
 import tensorflow as tf
 import numpy as np
 import os
+import cv2
 
 from clustering import ColorClustering
 from nets import create_feature_extractor, Colorizer
@@ -26,7 +27,7 @@ def create_dataset(size = [256, 256],
                    num_reference = 3,
                    num_target = 1):
   from dataset import load_kinetics
-  kinetics = load_kinetics(DATA_DIR, 'train', donwload=False)
+  kinetics = load_kinetics(DATA_DIR, 'train', download=False)
   if kinetics is None:
     raise Exception('Could not find Kinetics dataset. Please run download_dataset.py first.')
   video_dir = os.path.join(DATA_DIR, 'videos_'+str(VIDEO_SIZE))
@@ -84,7 +85,7 @@ def train_colorizer(colorizer, dataset, save_path):
     return {
         'reference_images': brightness[:NUM_REF],
         'target_images': brightness[NUM_REF:],
-        'reference_labels': tf.one_hot(labels[:NUM_REF], NUM_CUSTERS)
+        'reference_labels': tf.one_hot(labels[:NUM_REF], NUM_CLUSTERS)
     }, labels[NUM_REF:]
 
   class Callback(tf.keras.callbacks.Callback):
@@ -103,7 +104,7 @@ if __name__=='__main__':
 
   clustering = ColorClustering(
       NUM_CLUSTERS,
-      kmeans_per_iteration = KMEANS_PER_ITERATION)
+      kmeans_steps_per_iteration = KMEANS_STEPS_PER_ITERATION)
   feature_extractor = create_feature_extractor()
   colorizer = Colorizer(feature_extractor)
   dataset = create_dataset(
@@ -112,4 +113,8 @@ if __name__=='__main__':
       num_target = NUM_TARGET)
 
   train_clusters(clustering, dataset)
+
+  colorizer.compile(
+      optimizer='adam',
+      loss='sparse_categorical_crossentropy')
   train_colorizer(colorizer, dataset, MODEL_DIR)

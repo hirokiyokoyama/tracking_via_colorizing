@@ -13,7 +13,9 @@ if __name__=='__main__':
   else:
     split = 'train'
     
-  kinetics = dataset.load_kinetics(DATA_DIR, split, donwload=True)
+  if not os.path.exists(DATA_DIR):
+     os.mkdir(DATA_DIR)
+  kinetics = dataset.load_kinetics(DATA_DIR, split, download=True)
   video_dir = os.path.join(DATA_DIR, 'videos_'+str(VIDEO_SIZE))
-  download_kinetics_videos(
+  dataset.download_kinetics_videos(
       kinetics, video_dir, preferred_size=VIDEO_SIZE)

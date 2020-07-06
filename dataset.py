@@ -77,6 +77,8 @@ def load_kinetics(base_dir, split, download=True):
     return json.load(f)
 
 def download_kinetics_videos(kinetics, dest_dir, preferred_size=256):
+  if not os.path.exists(dest_dir):
+     os.mkdir(dest_dir)
   dl = VideoDownloader(preferred_size=preferred_size)
 
   for key, entry in kinetics.items():
