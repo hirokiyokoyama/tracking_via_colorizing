@@ -1,97 +1,101 @@
-import json
-import os
+import tensorflow as tf
 import numpy as np
 import cv2
-import tensorflow as tf
-from itertools import cycle
+import os
+import json
+import datetime
+import subprocess
 
-data_dir = os.path.join(os.path.dirname(__file__), 'data')
-kinetics_dir = os.path.join(data_dir, 'kinetics_train')
-kinetics_path = os.path.join(kinetics_dir, 'kinetics_train.json')
-video_dir = os.path.join(data_dir, 'videos')
-if __name__ != '__main__':
-    if not os.path.exists(kinetics_path):
-        raise ImportError('%s does not exist. Run dataset.py first.' % kinetics_path)
-    kinetics = json.load(open(kinetics_path))
+_kinetics_url = 'https://storage.googleapis.com/deepmind-media/Datasets/kinetics600.tar.gz'
+_davis_url = 'https://data.vision.ee.ethz.ch/csergi/share/davis/DAVIS-2017-test-dev-480p.zip'
 
-def create_ref_target_generator(num_ref=3, num_target=1, ref_skip=4, target_skip=4):
-    skips = [ref_skip]*num_ref + [target_skip]*num_target
-    skips[0] = 0
-    
-    def generate_frames():
-        for key, entry in kinetics.iteritems():
-            filename = os.path.join(video_dir, key+'.mp4')
-            print 'Opening %s' % filename
-            cap = cv2.VideoCapture(filename)
-            frames = np.zeros((num_ref+num_target,
-                               int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-                               int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), 3), dtype=np.float32)
-            batches = 0
-            for i, skip in cycle(enumerate(skips)):
-                for _ in range(skip):
-                    cap.read()
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                frames[i] = cv2.cvtColor(np.float32(frame/255.), cv2.COLOR_BGR2LAB)
-                if i == num_ref + num_target - 1:
-                    if num_target > 0:
-                        yield frames[:num_ref], frames[num_ref:]
-                    else:
-                        yield frames
-                    batches += 1
-            print 'Extracted %d batches from %s' % (batches, filename)
-    if num_target > 0:
-        types = tf.float32, tf.float32
-        shapes = tf.TensorShape([num_ref,None,None,3]), tf.TensorShape([num_target,None,None,3])
+class VideoDownloader:
+  def __init__(self, preferred_size=None):
+    import youtube_dl
+    self._ydl = youtube_dl.YoutubeDL({'format': 'mp4'})
+    self._preferred_size = preferred_size
+
+  def download(self, url, segment, filename):
+    try:
+      formats = self._ydl.extract_info(url, download=False)['formats']
+    except:
+      return 'extract_info_failed'
+
+    formats = list(filter(lambda x: x['width'] and x['height'], formats))
+    if not formats:
+      return 'no_format_available'
+
+    key = lambda x: min(x['width'], x['height'])
+    if self._preferred_size:
+      formats_larger = list(filter(lambda x: key(x) >= self._preferred_size, formats))
+      formats_larger.sort(key=key, reverse=False)
+      formats_smaller = list(filter(lambda x: key(x) < self._preferred_size, formats))
+      formats_smaller.sort(key=key, reverse=True)
+      formats = formats_larger + formats_smaller
     else:
-        types = tf.float32
-        shapes = tf.TensorShape([num_ref,None,None,3])
-    return tf.data.Dataset.from_generator(generate_frames, types, shapes)
+      formats.sort(key=key, reverse=True)
 
-def create_batch_generator(batch_size):
-    return create_ref_target_generator(num_ref=batch_size, num_target=0)
+    for format in formats:
+      begin, end = map(lambda x: datetime.timedelta(seconds=x), segment)
+      p = subprocess.Popen([
+                            'ffmpeg', '-i', format["url"],
+                            '-ss', str(begin), '-to', str(end),
+                            '-c', 'copy', filename],
+                           stdout=subprocess.PIPE,
+                           stderr=subprocess.PIPE)
+      try:
+        p.wait(timeout=60)
+      except subprocess.TimeoutExpired:
+        p.kill()
+        return 'download_failed'
+      if p.returncode == 0:
+        return 'success'
+    return 'download_failed'
 
-if __name__=='__main__':
-    if not os.path.exists(data_dir):
-        os.mkdir(data_dir)
-    if not os.path.exists(video_dir):
-        os.mkdir(video_dir)
+def download_kinetics(url, dest_dir):
+  filename = url.split('/')[-1]
+  if not filename.endswith('.tar.gz'):
+    raise ValueError(f'Unsupported URL: {url}')
+  filepath = os.path.join(dest_dir, filename)
+  if not os.path.exists(dest_dir):
+     os.mkdir(dest_dir)
 
-    if not os.path.exists(kinetics_path):
-        if not os.path.exists(kinetics_dir):
-            os.mkdir(kinetics_dir)
-        print 'Downloading kinetics dataset.'
-        kinetics_url = 'https://deepmind.com/documents/193/kinetics_600_train%20(1).zip'
-        kinetics_zip = os.path.join(data_dir, 'kinetics_train.zip')
-        os.system('curl "%s" > %s' % (kinetics_url, kinetics_zip))
-        os.system('unzip %s -d %s' % (kinetics_zip, kinetics_dir))
-        os.remove(kinetics_zip)
-    kinetics = json.load(open(kinetics_path))
+  if os.system(f'curl -L -o {filepath} {url}') != 0:
+    raise Exception('Download failed.')
+  if os.system(f'tar -zxvf {filepath} -C {dest_dir}') != 0:
+    raise Exception('Extraction failed.')
+  os.remove(filepath)
 
-    for key in kinetics.keys():
-        entry = kinetics[key]
-        url = entry['url']
-        path1 = os.path.join(video_dir, '_'+key+'.mp4')
-        path2 = os.path.join(video_dir, key+'.mp4')
-        if os.path.exists(path2):
-            print 'Skipping existing video "%s".' % key
-        else:
-          try:
-            print 'Downloading video "%s".' % key
-            command = ['youtube-dl',
-                       '--quiet', '--no-warnings',
-                       '-f', 'mp4',
-                       '-o', '"%s"' % path1,
-                       '"%s"' % url]
-            os.system(' '.join(command))
-            command = ['ffmpeg',
-                       '-i', '"%s"' % path1,
-                       '-t', '%f' % entry['duration'],
-                       '-ss', '%f' % entry['annotations']['segment'][0],
-                       '-strict', '-2',
-                       '"%s"' % path2]
-            os.system(' '.join(command))
-            os.remove(path1)
-          except:
-            print 'Error with video "%s". Skipping.' % key
+def load_kinetics(base_dir, split, download=True):
+  json_file = os.path.join(base_dir, 'kinetics600', split+'.json')
+  if not os.path.exists(json_file):
+    if not download:
+      return None
+    download_kinetics(_kinetics_url, base_dir)
+    
+  with open(json_file) as f:
+    return json.load(f)
+
+def download_kinetics_videos(kinetics, dest_dir, preferred_size=256):
+  dl = VideoDownloader(preferred_size=preferred_size)
+
+  for key, entry in kinetics.items():
+    filename = os.path.join(dest_dir, key+'.mp4')
+    if os.path.exists(filename):
+      continue
+    result = dl.download(entry['url'], entry['annotations']['segment'], filename)
+    print(result)
+
+def download_davis(url, dest_dir):
+  filename = url.split('/')[-1]
+  if not filename.endswith('.zip'):
+    raise ValueError(f'Unsupported URL: {url}')
+  filepath = os.path.join(dest_dir, filename)
+  if not os.path.exists(dest_dir):
+     os.mkdir(dest_dir)
+  
+  if os.system(f'curl -L -o {filepath} {url}') != 0:
+    raise Exception('Download failed.')
+  if os.system(f'unzip {filepath} -d {dest_dir}') != 0:
+    raise Exception('Extraction failed.')
+  os.remove(filepath)
