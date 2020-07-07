@@ -20,7 +20,7 @@ FEATURE_MAP_SIZE = [32,32] # IMAGE_SIZE/8 (depends on CNN)
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 MODEL_DIR = os.path.join(DATA_DIR, 'model')
 
-BATCH_SIZE = 8
+BATCH_SIZE = 4
 #############################################################
 
 def create_dataset(size = [256, 256],
@@ -117,4 +117,4 @@ if __name__=='__main__':
   colorizer.compile(
       optimizer='adam',
       loss='sparse_categorical_crossentropy')
-  train_colorizer(colorizer, dataset, MODEL_DIR)
+  train_colorizer(colorizer, dataset, os.path.join(MODEL_DIR, 'colorizer'))
