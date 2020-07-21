@@ -42,7 +42,7 @@ def get_images(image_set):
 def apply_mask(image, mask):
   return mask[:,:,0:1] * image + (mask[:,:,1:,np.newaxis] * colors[1:].reshape(1,1,-1,3)).sum(2)
 
-if __name__=='__main__':
+def main():
   if not os.path.exists(DAVIS_DIR):
     from dataset import download_davis, _davis_url
     download_davis(_davis_url, DATA_DIR)
@@ -86,3 +86,6 @@ if __name__=='__main__':
     plt.imshow(apply_mask(all_images[t], mask))
     plt.axis('off')
   plt.show()
+  
+if __name__=='__main__':
+  main()

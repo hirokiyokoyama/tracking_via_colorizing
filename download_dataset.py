@@ -7,7 +7,7 @@ import sys
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 VIDEO_SIZE = 256
 
-if __name__=='__main__':
+def main():
   if len(sys.argv) > 1:
     split = sys.argv[1]
   else:
@@ -19,3 +19,6 @@ if __name__=='__main__':
   video_dir = os.path.join(DATA_DIR, 'videos_'+str(VIDEO_SIZE))
   dataset.download_kinetics_videos(
       kinetics, video_dir, preferred_size=VIDEO_SIZE)
+
+if __name__=='__main__':
+  main()

@@ -93,12 +93,12 @@ def train_colorizer(colorizer, dataset, save_path):
       if batch % 100 == 0:
         colorizer.save_weights(save_path)
 
+def main():
   dataset = dataset.map(preprocess).batch(BATCH_SIZE)
   colorizer.fit(
       dataset.prefetch(tf.data.experimental.AUTOTUNE),
       callbacks=Callback())
 
-if __name__=='__main__':
   if not os.path.exists(MODEL_DIR):
     os.mkdir(MODEL_DIR)
 
@@ -118,3 +118,6 @@ if __name__=='__main__':
       optimizer='adam',
       loss='sparse_categorical_crossentropy')
   train_colorizer(colorizer, dataset, os.path.join(MODEL_DIR, 'colorizer'))
+  
+if __name__=='__main__':
+  main()
