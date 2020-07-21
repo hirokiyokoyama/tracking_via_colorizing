@@ -26,8 +26,6 @@ For details, see https://ai.googleblog.com/2018/06/self-supervised-tracking-via-
 * BATCH_SIZE: Size of mini-batches.
 
 ### Test
-(Now implementing)
-
 By following command, you can check if the trained model can perform tracking, which is not explicitly trained.
 
     python test_with_davis.py
