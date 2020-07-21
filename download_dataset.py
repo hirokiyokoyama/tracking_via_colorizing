@@ -7,11 +7,8 @@ import sys
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 VIDEO_SIZE = 256
 
-def main():
-  if len(sys.argv) > 1:
-    split = sys.argv[1]
-  else:
-    split = 'train'
+def main(split = 'train'):
+  split = split or 'train'
     
   if not os.path.exists(DATA_DIR):
      os.mkdir(DATA_DIR)
@@ -21,4 +18,7 @@ def main():
       kinetics, video_dir, preferred_size=VIDEO_SIZE)
 
 if __name__=='__main__':
-  main()
+  if len(sys.argv) > 1:
+    main(sys.argv[1])
+  else:
+    main()
