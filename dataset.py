@@ -16,7 +16,7 @@ class VideoDownloader:
     self._ydl = youtube_dl.YoutubeDL({'format': 'mp4'})
     self._preferred_size = preferred_size
     self._sleep_interval = 60
-    self._max_sleep_interval = 3600
+    self._max_sleep_interval = 3600*8
 
   def download(self, url, segment, filename):
     try:
@@ -63,6 +63,8 @@ class VideoDownloader:
     count = 0
     
     while True:
+      if self._sleep_interval > self._max_sleep_interval:
+        raise Exception(f'Too many requests error persists.')
       try:
         formats = self._ydl.extract_info(url, download=False)['formats']
         return formats
@@ -77,8 +79,6 @@ class VideoDownloader:
         if count >= 1:
           # More than once
           self._sleep_interval *= 2
-        if self._sleep_interval > self._max_sleep_interval:
-          raise Exception(f'Too many requests error persists for {count} times.')
         print(f'Waiting for {self._sleep_interval} seconds.')
         time.sleep(self._sleep_interval)
         count += 1
