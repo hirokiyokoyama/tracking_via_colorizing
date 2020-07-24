@@ -16,28 +16,13 @@ class VideoDownloader:
     self._ydl = youtube_dl.YoutubeDL({'format': 'mp4'})
     self._preferred_size = preferred_size
     self._sleep_interval = 60
-    self._too_many_requests_occurred = False
+    self._max_sleep_interval = 3600
 
   def download(self, url, segment, filename):
     try:
-      formats = self._ydl.extract_info(url, download=False)['formats']
-    except Exception as e:
-      import urllib
-      if isinstance(e, youtube_dl.utils.DownloadError) \
-         and isinstance(e.exc_info[1], urllib.error.HTTPError) \
-         and e.exc_info[1].code == 429:
-        # Too many requests
-        if self._too_many_requests_occured:
-          # More than twice
-          self._sleep_interval *= 2
-        self._too_many_requests_occured = True
-        print(f'Waiting for {self._sleep_interval} seconds.')
-        time.sleep(self._sleep_interval)
-      else:
-        self._too_many_requests_occurred = False
-      return 'extract_info_failed'
-    self._too_many_requests_occurred = False
-    
+      formats = self._extract_info(url)
+    except:
+      return 'failed_to_extract_info'
     formats = list(filter(lambda x: x['width'] and x['height'], formats))
     if not formats:
       return 'no_format_available'
@@ -68,6 +53,31 @@ class VideoDownloader:
       if p.returncode == 0:
         return 'success'
     return 'download_failed'
+
+  def _extract_info(self, url):
+    import urllib
+    count = 0
+    
+    while True:
+      try:
+        formats = self._ydl.extract_info(url, download=False)['formats']
+        return formats
+      except Exception as e:
+        if not isinstance(e, youtube_dl.utils.DownloadError):
+          raise e
+        if not isinstance(e.exc_info[1], urllib.error.HTTPError):
+          raise e
+        if e.exc_info[1].code != 429:
+          raise e
+        # Too many requests
+        if count >= 1:
+          # More than once
+          self._sleep_interval *= 2
+        if self._sleep_interval > self._max_sleep_interval:
+          raise Exception(f'Too many requests error persists for {count} times.')
+        print(f'Waiting for {self._sleep_interval} seconds.')
+        time.sleep(self._sleep_interval)
+        count += 1
 
 def download_kinetics(url, dest_dir):
   filename = url.split('/')[-1]
