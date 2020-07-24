@@ -57,6 +57,7 @@ class VideoDownloader:
   def _extract_info(self, url):
     import urllib
     import youtube_dl
+    import time
     count = 0
     
     while True:
@@ -66,7 +67,6 @@ class VideoDownloader:
       except Exception as e:
         if not isinstance(e, youtube_dl.utils.DownloadError):
           raise e
-        print('B', e.exc_info[1])
         if not isinstance(e.exc_info[1], urllib.error.HTTPError):
           raise e
         if e.exc_info[1].code != 429:
@@ -80,10 +80,7 @@ class VideoDownloader:
         print(f'Waiting for {self._sleep_interval} seconds.')
         time.sleep(self._sleep_interval)
         count += 1
-      finally:
-        print('x')
     
-
 def download_kinetics(url, dest_dir):
   filename = url.split('/')[-1]
   if not filename.endswith('.tar.gz'):
