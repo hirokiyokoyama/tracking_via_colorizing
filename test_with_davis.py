@@ -97,7 +97,7 @@ def main(data_dir=DATA_DIR, model_dir=MODEL_DIR):
     annotations[-1] = predictions[0,0].numpy()
     mask = cv2.resize(predictions[0,0].numpy(), (all_images.shape[2], all_images.shape[1]))
     plt.subplot(3,1,t+1)
-    plt.imshow(apply_mask(all_images[t], mask))
+    plt.imshow(apply_mask(all_images[t], mask, colors))
     plt.axis('off')
   plt.show()
   
