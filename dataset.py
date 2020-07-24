@@ -22,6 +22,8 @@ class VideoDownloader:
     try:
       formats = self._extract_info(url)
     except:
+      import traceback
+      traceback.print_exc()
       return 'failed_to_extract_info'
     formats = list(filter(lambda x: x['width'] and x['height'], formats))
     if not formats:
