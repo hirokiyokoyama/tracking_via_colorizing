@@ -57,12 +57,15 @@ class VideoDownloader:
   def _extract_info(self, url):
     import urllib
     count = 0
+    print('A')
     
     while True:
       try:
+        print('B')
         formats = self._ydl.extract_info(url, download=False)['formats']
         return formats
       except Exception as e:
+        print(e)
         if not isinstance(e, youtube_dl.utils.DownloadError):
           print('a')
           raise e
