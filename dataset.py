@@ -62,9 +62,13 @@ class VideoDownloader:
       try:
         formats = self._ydl.extract_info(url, download=False)['formats']
         return formats
-      except BaseException as e:
-        print('A', type(e))
-        if not isinstance(e, youtube_dl.utils.DownloadError):
+      except Exception as e:
+        try:
+          cls = youtube_dl.utils.DownloadError
+          print('A', cls)
+        except Exception as ex:
+          print(ex)
+        if not isinstance(e, cls):
           print('a')
           raise e
         print('B', e.exc_info[1])
