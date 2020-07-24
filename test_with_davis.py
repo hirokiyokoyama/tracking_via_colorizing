@@ -17,7 +17,7 @@ def apply_mask(image, mask):
 class Davis:
   def __init__(self, base_dir):
     self.davis_dir = os.path.join(base_dir, 'DAVIS')
-    if not os.path.exists(davis_dir):
+    if not os.path.exists(self.davis_dir):
       from dataset import download_davis, _davis_url
       download_davis(_davis_url, base_dir)
 
