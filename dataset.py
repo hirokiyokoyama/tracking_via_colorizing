@@ -81,6 +81,9 @@ class VideoDownloader:
         print(f'Waiting for {self._sleep_interval} seconds.')
         time.sleep(self._sleep_interval)
         count += 1
+    finally:
+      print('x')
+    
 
 def download_kinetics(url, dest_dir):
   filename = url.split('/')[-1]
