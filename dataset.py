@@ -64,10 +64,13 @@ class VideoDownloader:
         return formats
       except Exception as e:
         if not isinstance(e, youtube_dl.utils.DownloadError):
+          print('a')
           raise e
         if not isinstance(e.exc_info[1], urllib.error.HTTPError):
+          print('b')
           raise e
         if e.exc_info[1].code != 429:
+          print('c')
           raise e
         # Too many requests
         if count >= 1:
