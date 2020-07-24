@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 MODEL_DIR = os.path.join(DATA_DIR, 'model')
 
-def apply_mask(image, mask):
+def apply_mask(image, mask, colors):
   return mask[:,:,0:1] * image \
       + (mask[:,:,1:,np.newaxis] * colors[1:].reshape(1,1,-1,3)).sum(2)
 
@@ -81,7 +81,7 @@ def main(data_dir=DATA_DIR, model_dir=MODEL_DIR):
   all_images_gray = all_images_gray[...,np.newaxis]#.repeat(3, -1)
 
   plt.subplot(3,1,1)
-  plt.imshow(apply_mask(all_images[0], annotation_large))
+  plt.imshow(apply_mask(all_images[0], annotation_large, colors))
   plt.axis('off')
 
   annotations = annotation[np.newaxis].repeat(3, 0)
