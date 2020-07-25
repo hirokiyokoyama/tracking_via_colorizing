@@ -2,11 +2,14 @@ import tensorflow as tf
 import numpy as np
 
 class ColorClustering(object):
-  def __init__(self, num_clusters, kmeans_steps_per_iteration=10):
+  def __init__(self, num_clusters,
+               kmeans_steps_per_iteration = 10,
+               model_dir = None):
     self._kmeans = tf.compat.v1.estimator.experimental.KMeans(
         num_clusters=num_clusters,
         use_mini_batch=True,
-        mini_batch_steps_per_iteration=kmeans_steps_per_iteration)
+        mini_batch_steps_per_iteration=kmeans_steps_per_iteration,
+        model_dir=model_dir)
     self.num_clusters = num_clusters
 
   def train(self, colors):

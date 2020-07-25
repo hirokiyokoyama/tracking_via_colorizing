@@ -65,7 +65,8 @@ def train_clusters(clustering, dataset):
   for x in dataset.shuffle(100).map(preprocess).take(10):
     clustering.train(x)
   
-def train_colorizer(colorizer, clustering, dataset, save_path,
+def train_colorizer(colorizer, clustering, dataset,
+                    save_dir = None,
                     batch_size = 4,
                     num_ref = 3):
   x, = dataset.take(1)
@@ -86,10 +87,15 @@ def train_colorizer(colorizer, clustering, dataset, save_path,
         'reference_labels': tf.one_hot(labels[:num_ref], num_clusters)
     }, labels[num_ref:]
 
-  class Callback(tf.keras.callbacks.Callback):
-    def on_train_batch_end(self, batch, logs=None):
-      if batch % 100 == 0:
-        colorizer.save_weights(save_path)
+  if save_dir:
+    save_path = os.path.join(save_dir, 'model')
+    class Callback(tf.keras.callbacks.Callback):
+      def on_train_batch_end(self, batch, logs=None):
+        if batch % 100 == 0:
+          colorizer.save_weights(save_path)
+    callbacks = Callback()
+  else:
+    callbacks = None
 
   dataset = dataset.map(preprocess).batch(batch_size)
   colorizer.fit(
@@ -126,7 +132,7 @@ def main():
       loss='sparse_categorical_crossentropy')
     
   train_colorizer(colorizer, clustering, dataset,
-                  os.path.join(MODEL_DIR, 'colorizer'),
+                  model_dir = MODEL_DIR,
                   batch_size = BATCH_SIZE,
                   num_ref = NUM_REF)
   
