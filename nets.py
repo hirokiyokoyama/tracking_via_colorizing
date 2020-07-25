@@ -34,7 +34,6 @@ class Colorizer(tf.keras.Model):
   def __init__(self, feature_extractor):
     super().__init__()
     self.feature_extractor = feature_extractor
-    self.model_dir = model_dir
 
   def call(self, inputs, training=False):
     #ref_images = tf.keras.Input([num_ref, None, None, 1])
