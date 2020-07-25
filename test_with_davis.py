@@ -65,7 +65,9 @@ def main(data_dir=DATA_DIR, model_dir=MODEL_DIR):
   davis = Davis(base_dir=data_dir)
   
   colorizer = Colorizer(create_feature_extractor())
-  colorizer.load_weights(os.path.join(model_dir, 'colorizer'))
+  ckpt = tf.train.latest_checkpoint(MODEL_DIR)
+  if ckpt:
+    colorizer.load_weights(ckpt)
 
   image_set = np.random.choice(davis.image_sets)
 
