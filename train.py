@@ -24,8 +24,7 @@ BATCH_SIZE = 4
 
 def create_dataset(kinetics, video_dir,
                    size = [256, 256],
-                   num_reference = 3,
-                   num_target = 1):
+                   num_frames = 4):
   if size is None:
     size = [None, None]
 
@@ -52,8 +51,9 @@ def create_dataset(kinetics, video_dir,
     }
   dataset = dataset.map(map_fn)
 
-  n = num_reference + num_target
-  dataset = dataset.interleave(lambda x: x['frame_dataset'].batch(n, drop_remainder=True), cycle_length=8)
+  map_fn = lambda x: x['frame_dataset'].batch(
+      num_frames, drop_remainder=True)
+  dataset = dataset.interleave(map_fn, cycle_length=8)
   return dataset
 
 def train_clusters(clustering, dataset):
@@ -122,8 +122,7 @@ def main():
   dataset = create_dataset(
       kinetics, video_dir,
       size = IMAGE_SIZE,
-      num_reference = NUM_REF,
-      num_target = NUM_TARGET)
+      num_frames = NUM_REF + NUM_TARGET)
 
   train_clusters(clustering, dataset)
 
