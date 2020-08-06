@@ -10,7 +10,7 @@ def copy_labels(ref_features, ref_labels, target_features, temperature=1.):
 
   ref_labels = tf.convert_to_tensor(ref_labels)
   if ref_labels.dtype in [tf.float16, tf.float32, tf.float64]:
-    ref_labels = tf.reshape(ref_labels, [-1,1,tf.shape(ref_labels)[-1]])
+    ref_labels = tf.reshape(ref_labels, [-1,tf.shape(ref_labels)[-1]])
   else:
     raise ValueError('ref_labels must be one-hot or probabilities, not indices')
 
@@ -26,7 +26,7 @@ def copy_labels(ref_features, ref_labels, target_features, temperature=1.):
 
   weight_mat = tf.nn.softmax(inner/temperature, axis=0)
 
-  prediction = tf.reduce_sum(tf.expand_dims(weight_mat, -1) * ref_labels, 0)
+  prediction = tf.matmul(weight_mat, ref_labels, transpose_a=True)
   prediction = tf.reshape(prediction, tf.concat([bhw, [-1]], 0))
   return prediction
 
