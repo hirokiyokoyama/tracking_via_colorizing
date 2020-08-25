@@ -30,6 +30,26 @@ def copy_labels(ref_features, ref_labels, target_features, temperature=1.):
   prediction = tf.reshape(prediction, tf.concat([bhw, [-1]], 0))
   return prediction
 
+def copy_labels_flat(ref_features, ref_labels, target_features, temperature=1.):
+  # ref_features: [N_REF,C], feature map from reference frames
+  # ref_labels: [N_REF,D], category probabilities from reference frames
+  # target_features: [N_TARGET,C], feature map from target frames
+  # target_labels: [N_TARGET,D], resultant category probabilities in target frames
+  # (C denotes feature dimension, D denotes number of categories)
+
+  ref_labels = tf.convert_to_tensor(ref_labels)
+  if ref_labels.dtype in [tf.float16, tf.float32, tf.float64]:
+    ref_labels = tf.reshape(ref_labels, [-1,tf.shape(ref_labels)[-1]])
+  else:
+    raise ValueError('ref_labels must be one-hot or probabilities, not indices')
+
+  inner = tf.matmul(target_features, ref_features, transpose_b=True)
+
+  weight_mat = tf.nn.softmax(inner/temperature, axis=1)
+
+  prediction = tf.matmul(weight_mat, ref_labels)
+  return prediction
+
 class Colorizer(tf.keras.Model):
   def __init__(self, feature_extractor):
     super().__init__()
@@ -53,14 +73,15 @@ class Colorizer(tf.keras.Model):
 
     features_flat = self.feature_extractor(inputs_flat, training=training)
     _,h,w,c = tf.unstack(tf.shape(features_flat))
-    features = tf.reshape(features_flat, [N,T,h,w,c])
-    ref_feat, target_feat = tf.split(features, [num_ref, num_target], axis=1)
+    features = tf.reshape(features_flat, [N,T*h*w,c])
+    ref_feat, target_feat = tf.split(features, [num_ref*h*w, num_target*h*w], axis=1)
 
     arr = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
     for i in tf.range(N):
-      prediction = copy_labels(ref_feat[i], ref_labels[i], target_feat[i], temperature)
+      prediction = copy_labels_flat(ref_feat[i], ref_labels[i], target_feat[i], temperature)
       arr = arr.write(i, prediction)
     prediction = arr.stack()
+    prediction = tf.reshape(prediction, [N,num_target,h,w,-1])
     return prediction
 
 def create_feature_extractor():
